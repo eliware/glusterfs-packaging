@@ -1,9 +1,10 @@
 # Metadata format policy
 
 All persistent packaging metadata carries a top-level `metadata_version` field.
-The current format is the application version in the root `package.json`. This
-is distinct from the internal `schema` field: `metadata_version` identifies the
-application release whose metadata contract is in use, while `schema`
+It identifies the newest schema-changing migration, independently of the
+application version in the root `package.json`. This is distinct from the
+internal `schema` field: `metadata_version` identifies the metadata contract,
+while `schema`
 identifies the structure within that contract.
 
 Versioned metadata includes:
@@ -19,7 +20,7 @@ metadata shape changes, add an ordered migration module under `migrations/`
 named for the target package version. Readers apply each applicable migration,
 advance `metadata_version` after it succeeds, and atomically persist the
 result. Releases without a metadata shape change do not need a migration; they
-only advance the marker to the package version. Normal builds and publications
+leave the marker unchanged. Normal builds and publications
 must never silently transform metadata without a versioned migration.
 
 Writers and readers also reject the legacy `meta_version` name. Required fields

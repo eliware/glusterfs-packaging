@@ -72,9 +72,5 @@ export async function migrateMetadata(value, label = "metadata document") {
     document = { ...document, metadata_version: migration.version };
     changed = true;
   }
-  if (compareVersions(document.metadata_version, PACKAGE_VERSION) < 0) {
-    document = { ...document, metadata_version: PACKAGE_VERSION };
-    changed = true;
-  }
   return { document, changed };
 }

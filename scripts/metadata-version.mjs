@@ -1,6 +1,6 @@
-import { PACKAGE_VERSION } from "./package-version.mjs";
+import { SCHEMA_VERSION } from "./schema-version.mjs";
 
-export const METADATA_VERSION = PACKAGE_VERSION;
+export const METADATA_VERSION = SCHEMA_VERSION;
 
 export function withMetadataVersion(value) {
   if (!value || typeof value !== "object" || Array.isArray(value))

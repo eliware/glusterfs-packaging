@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { buildPlatformData } from "../scripts/release-report.mjs";
 
 test("release report aggregates package and image lanes by platform", () => {

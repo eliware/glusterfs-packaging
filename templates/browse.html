@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en" data-page="directory-browser">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Browse Eliware GlusterFS packages, repository metadata, and release artifacts."
+    />
+    <link rel="canonical" href="https://glusterfs.eliware.org/el10/x86_64/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="GlusterFS repository browser" />
+    <meta
+      property="og:description"
+      content="Browse signed Eliware GlusterFS packages, repositories, and release artifacts."
+    />
+    <meta
+      property="og:url"
+      content="https://glusterfs.eliware.org/el10/x86_64/"
+    />
+    <meta
+      property="og:image"
+      content="https://glusterfs.eliware.org/metadata/latest-release-card.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GlusterFS repository browser" />
+    <meta
+      name="twitter:description"
+      content="Browse signed Eliware GlusterFS packages, repositories, and release artifacts."
+    />
+    <meta
+      name="twitter:image"
+      content="https://glusterfs.eliware.org/metadata/latest-release-card.png"
+    />
+    <link rel="icon" href="/assets/favicon.ico" sizes="any" />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #080d18;
+        color: #e8eef8;
+        font:
+          15px/1.5 system-ui,
+          sans-serif;
+      }
+      a {
+        color: #80d9ff;
+      }
+      .container {
+        width: 100%;
+        max-width: 1320px;
+        margin: 0 auto;
+        padding-inline: 12px;
+      }
+      .navbar {
+        border-bottom: 1px solid #243553;
+        background: rgba(8, 13, 24, 0.92);
+      }
+      .navbar .container {
+        min-height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .navbar-brand {
+        color: #e8eef8;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .site-nav {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .site-nav a {
+        color: #91a3bc;
+        text-decoration: none;
+        font-size: 0.9rem;
+      }
+      .site-nav a:hover,
+      .site-nav a:focus-visible {
+        color: #80d9ff;
+      }
+      .brand-logo {
+        display: block;
+        width: 3.25rem;
+        height: 3.25rem;
+        object-fit: contain;
+      }
+      .repository-browser {
+        max-width: 1100px;
+        padding-top: 3rem;
+      }
+      .directory-hero {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 1.75rem;
+        padding: 0.85rem 1.1rem;
+        border: 1px solid #315477;
+        border-radius: 1.25rem;
+        background: linear-gradient(135deg, #12243b, #0c1526);
+      }
+      .directory-hero img {
+        margin-left: auto;
+        width: 100px;
+        height: 100px;
+        object-fit: contain;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        line-height: 1.05;
+      }
+    </style>
+    <link
+      rel="preload"
+      href="/web/app.css?v=__ASSET_VERSION__"
+      as="style"
+      onload="
+        this.onload = null;
+        this.rel = 'stylesheet';
+      "
+    />
+    <noscript
+      ><link rel="stylesheet" href="/web/app.css?v=__ASSET_VERSION__"
+    /></noscript>
+    <title>Repository browser · Eliware GlusterFS</title>
+  </head>
+  <body>
+    <nav class="navbar sticky-top">
+      <div class="container py-2">
+        <a
+          class="navbar-brand fw-semibold d-flex align-items-center gap-2"
+          href="/"
+          ><img
+            class="brand-logo"
+            src="/assets/eliware-brand.svg"
+            width="52"
+            height="52"
+            alt="Eliware"
+          /><span>GlusterFS</span></a
+        >
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="/#install">Install</a>
+          <a href="/#containers">Containers</a>
+          <a href="/blog">Blog</a>
+          <a href="/about">About</a>
+        </nav>
+        <details class="mobile-nav">
+          <summary>Menu</summary>
+          <div class="mobile-nav-links">
+            <a href="/#install">Install</a>
+            <a href="/#containers">Containers</a>
+            <a href="/blog">Blog</a>
+            <a href="/about">About</a>
+          </div>
+        </details>
+        <span
+          class="badge rounded-pill text-bg-success-subtle border border-success-subtle px-3 py-2"
+          ><span class="glyph" aria-hidden="true">✓</span> Repository
+          online</span
+        >
+      </div>
+    </nav>
+    <main class="container repository-browser">
+      <section class="directory-hero" aria-labelledby="directory-title">
+        <div>
+          <h1 id="directory-title">Repository browser</h1>
+        </div>
+        <img src="/assets/gluster-logo-thumb.webp" alt="GlusterFS" />
+      </section>
+      <nav
+        class="breadcrumbs"
+        id="directory-breadcrumbs"
+        aria-label="Breadcrumbs"
+      ></nav>
+      <div
+        id="directory-status"
+        class="visually-hidden"
+        aria-live="polite"
+      ></div>
+      <section id="package-detail-panel" class="package-detail-panel" hidden>
+        <div class="package-detail-heading">
+          <div>
+            <div class="eyebrow">Package detail</div>
+            <h2 id="package-detail-title" class="h5 mb-1"></h2>
+            <p id="package-detail-meta" class="muted small mb-0"></p>
+          </div>
+          <a id="package-detail-link" class="btn btn-outline-light" href="#"
+            >Download</a
+          >
+        </div>
+        <div class="package-checksum">
+          <span>SHA-256</span>
+          <code id="package-detail-hash"></code>
+          <button
+            type="button"
+            class="copy-link"
+            data-package-detail-copy="package-detail-hash"
+          >
+            Copy
+          </button>
+        </div>
+        <div class="code-wrap">
+          <button
+            type="button"
+            class="copy-btn"
+            data-package-detail-copy="package-detail-command"
+          >
+            Copy
+          </button>
+          <pre id="package-detail-command"></pre>
+        </div>
+      </section>
+      <div class="directory-tools" aria-label="Directory filters">
+        <label>
+          <span>Filter packages</span>
+          <input
+            id="directory-filter"
+            type="search"
+            placeholder="Search by package name"
+          />
+        </label>
+        <label>
+          <span>Show</span>
+          <select id="directory-view">
+            <option value="all">All artifacts</option>
+            <option value="runtime">Runtime packages</option>
+          </select>
+        </label>
+      </div>
+      <section
+        id="directory-validation"
+        class="card validation-card p-3 mb-4"
+        hidden
+      >
+        <div class="validation-card-heading">
+          <div>
+            <div class="eyebrow mb-1">Build verification</div>
+            <h2 class="h5 mb-1">Compatibility checks</h2>
+          </div>
+        </div>
+        <div class="table-scroll mt-3">
+          <table class="validation-table">
+            <thead>
+              <tr>
+                <th scope="col">Distribution</th>
+                <th scope="col">Package core</th>
+                <th scope="col">Container core</th>
+                <th scope="col">Repository integrity</th>
+                <th scope="col">Provenance</th>
+              </tr>
+            </thead>
+            <tbody id="directory-validation-rows"></tbody>
+          </table>
+        </div>
+      </section>
+      <div class="card directory-card table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>
+                <button
+                  class="sort-button"
+                  data-sort-key="type"
+                  aria-label="Sort by type"
+                >
+                  <span>↕</span>
+                </button>
+              </th>
+              <th>
+                <button class="sort-button" data-sort-key="name">
+                  Name <span></span>
+                </button>
+              </th>
+              <th>
+                <button class="sort-button" data-sort-key="size">
+                  Size <span></span>
+                </button>
+              </th>
+              <th>
+                <button class="sort-button" data-sort-key="date">
+                  Modified <span></span>
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="directory-entries"></tbody>
+        </table>
+      </div>
+      <p class="directory-summary" id="directory-summary"></p>
+    </main>
+    <footer class="site-footer">
+      <div
+        class="container py-4 d-flex flex-wrap justify-content-between gap-2"
+      >
+        <span
+          >© __COPYRIGHT_YEAR__ Eliware · GlusterFS packaging
+          v__APP_VERSION__</span
+        ><span class="footer-serving-host">Host <code>__HOST_ID__</code></span
+        ><span
+          ><a href="/about">About</a><span class="mx-2">·</span
+          ><a href="/tos">Terms</a><span class="mx-2">·</span
+          ><a href="/policy">Policy</a><span class="mx-2">·</span
+          ><a href="/metadata/catalog.json">Catalog</a
+          ><span class="mx-2">·</span><a href="/healthz">Health</a></span
+        >
+      </div>
+    </footer>
+    <script src="/web/app.js?v=__ASSET_VERSION__" defer></script>
+  </body>
+</html>

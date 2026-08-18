@@ -1,0 +1,78 @@
+{
+  "name": "glusterfs-packaging",
+  "version": "0.1.0",
+  "description": "Reproducible GlusterFS RPM builds, repository publishing, and the repository web application.",
+  "keywords": [
+    "glusterfs",
+    "rpm",
+    "dnf",
+    "centos",
+    "repository",
+    "packaging"
+  ],
+  "type": "module",
+  "main": "src/be/server.mjs",
+  "scripts": {
+    "start": "node src/be/server.mjs",
+    "check": "node --check src/be/server.mjs && npm run check:scripts",
+    "check:scripts": "node scripts/check-syntax.mjs",
+    "build": "npm run build:web",
+    "build:web": "webpack --config src/webpack.config.mjs --context src",
+    "prepare:http-image": "node scripts/prepare-http-image-context.mjs",
+    "format": "prettier --write scripts src tests templates containers package.json",
+    "format:check": "prettier --check scripts src tests templates containers package.json",
+    "format:html": "prettier --write templates/*.html",
+    "test:e2e:screenshots": "node tests/e2e/site-screenshots.mjs",
+    "test:e2e:lighthouse": "node tests/e2e/lighthouse.mjs",
+    "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --detectOpenHandles --silent --runInBand --coverage",
+    "audit": "npm audit --omit=dev --audit-level=moderate",
+    "coverage": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --detectOpenHandles --coverage --runInBand",
+    "lint": "oxlint .",
+    "test:gaps": "npm test 2>&1 | grep '|' | grep -vF '|     100 |      100 |     100 |     100 |'",
+    "verify:provenance": "node scripts/verify-provenance.mjs",
+    "conductor": "node scripts/conductor.mjs"
+  },
+  "devDependencies": {
+    "chrome-launcher": "^1.2.1",
+    "css-loader": "^7.1.4",
+    "css-minimizer-webpack-plugin": "^8.0.0",
+    "jest": "^30.4.2",
+    "lighthouse": "^13.4.1",
+    "mini-css-extract-plugin": "^2.10.2",
+    "oxlint": "^1.78.0",
+    "prettier": "^3.9.6",
+    "puppeteer": "^25.8.0",
+    "webpack": "^5.109.2",
+    "webpack-cli": "^7.2.2"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/?(*.)+(spec|test).[jt]s?(x)",
+      "**/?(*.)+(spec|test).mjs",
+      "**/?(*.)+(spec|test).cjs"
+    ]
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/eliware/glusterfs-packaging.git"
+  },
+  "author": "Eliware",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/eliware/glusterfs-packaging/issues"
+  },
+  "homepage": "https://github.com/eliware/glusterfs-packaging#readme",
+  "packageManager": "npm@12.0.2",
+  "private": true,
+  "allowScripts": {
+    "puppeteer@25.7.0": true,
+    "unrs-resolver": false
+  },
+  "dependencies": {
+    "@eliware/discord-webhook": "^1.1.8"
+  }
+}

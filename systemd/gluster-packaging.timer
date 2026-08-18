@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily GlusterFS packaging check
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 UTC
+Persistent=true
+Unit=gluster-packaging.service
+
+[Install]
+WantedBy=timers.target

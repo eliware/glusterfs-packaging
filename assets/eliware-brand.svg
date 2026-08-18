@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="724" height="724" viewBox="0 0 724 724" role="img" aria-labelledby="title desc">
+  <title id="title">eliware logo</title>
+  <desc id="desc">Cyan code braces surrounding a hash symbol above the eliware wordmark.</desc>
+  <g fill="#2bd3ef" font-family="Arial, Helvetica, sans-serif" font-weight="525" text-anchor="middle">
+    <text x="60" y="245" font-size="300" transform="translate(176 104) scale(1 0.9)">{</text>
+    <text x="75" y="225" font-size="282" transform="translate(298 159) scale(.867857 .775)">#</text>
+    <text x="60" y="245" font-size="300" transform="translate(429 106) scale(.991667 .896667)">}</text>
+  </g>
+  <g fill="#dedee0" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="190" font-weight="500" text-anchor="middle">
+    <text x="75" y="170" transform="translate(24 407) scale(.986667 .971429)">e</text>
+    <text x="60" y="170" transform="translate(112 410) scale(1.075 .957143)">l</text>
+    <text x="50" y="170" transform="translate(168 407) scale(1.11 .97619)">i</text>
+    <text x="95" y="170" transform="translate(227 406) scale(1.042105 .980952)">w</text>
+    <text x="75" y="170" transform="translate(380 404) scale(.92 .985714)">a</text>
+    <text x="70" y="170" transform="translate(459 407) scale(1.064286 .97619)">r</text>
+    <text x="75" y="170" transform="translate(547 407) scale(.986667 .971429)">e</text>
+  </g>
+</svg>

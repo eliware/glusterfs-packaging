@@ -1,0 +1,131 @@
+name: Publish CentOS 10 RPM builder image
+
+on:
+  workflow_dispatch:
+    inputs:
+      gluster_version:
+        description: GlusterFS version represented by this builder image
+        required: true
+        type: string
+      base_image:
+        description: Immutable CentOS Stream 10 base image reference
+        required: false
+        default: quay.io/centos/centos:stream10@sha256:b7f85bb8be4c471bc62842156a51bbf224b15243943733bd54e86ba5fd79b1fc
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-test-publish:
+    runs-on: eliware-container
+    steps:
+      - name: Check out packaging inputs
+        uses: actions/checkout@v6
+
+      - name: Derive immutable image tag
+        id: image
+        env:
+          GLUSTER_VERSION: ${{ inputs.gluster_version }}
+          BASE_IMAGE: ${{ inputs.base_image }}
+        run: |
+          set -euo pipefail
+          case "$BASE_IMAGE" in
+            *@sha256:[0-9a-f]*) ;;
+            *) echo 'base_image must include an immutable sha256 digest' >&2; exit 1 ;;
+          esac
+          base_digest="${BASE_IMAGE##*@}"
+          base_short="${base_digest#sha256:}"
+          date_tag="$(date -u +%Y.%m.%d)"
+          image="ghcr.io/eliware/centos10-gluster-builder:${GLUSTER_VERSION}-${date_tag}-cs10-${base_short:0:8}"
+          {
+            echo "image=$image"
+            echo "base_digest=$base_digest"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build builder image
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          BASE_IMAGE: ${{ inputs.base_image }}
+          BASE_DIGEST: ${{ steps.image.outputs.base_digest }}
+          GLUSTER_VERSION: ${{ inputs.gluster_version }}
+        run: |
+          set -euo pipefail
+          docker build \
+            --file containers/centos10-gluster-builder.Dockerfile \
+            --tag "$IMAGE" \
+            --build-arg BASE_IMAGE="$BASE_IMAGE" \
+            --build-arg CENTOS_BASE_DIGEST="$BASE_DIGEST" \
+            --build-arg GLUSTER_VERSION="$GLUSTER_VERSION" \
+            .
+
+      - name: Smoke-test builder toolchain
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint /bin/bash "$IMAGE" -ceu '
+            autoconf --version >/dev/null
+            automake --version >/dev/null
+            bison --version >/dev/null
+            ccache --version >/dev/null
+            cmake --version >/dev/null
+            gcc --version >/dev/null
+            git --version >/dev/null
+            make --version >/dev/null
+            node --version >/dev/null
+            python3 --version >/dev/null
+            rpmbuild --version >/dev/null
+            rpmsign --version >/dev/null
+            createrepo_c --version >/dev/null
+            buildah --version >/dev/null
+            podman --version >/dev/null
+            skopeo --version >/dev/null
+            gpg --version >/dev/null
+            ! rpm -q glusterfs glusterfs-cli glusterfs-fuse glusterfs-client >/dev/null 2>&1
+            test -x /home/runner/run.sh
+            test -x /home/runner/bin/Runner.Listener
+            ! ldd /home/runner/bin/Runner.Listener | grep -q "not found"
+            /home/runner/bin/Runner.Listener --version >/dev/null
+          '
+
+      - name: Push builder image
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: docker push "$IMAGE"
+
+      - name: Record immutable image result
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          GLUSTER_VERSION: ${{ inputs.gluster_version }}
+          BASE_IMAGE: ${{ inputs.base_image }}
+          BASE_DIGEST: ${{ steps.image.outputs.base_digest }}
+        run: |
+          set -euo pipefail
+          digest="$(docker buildx imagetools inspect "$IMAGE" --format '{{.Manifest.Digest}}')"
+          test -n "$digest"
+          mkdir -p builder-image-result
+          jq -n \
+            --arg image "$IMAGE" \
+            --arg digest "$digest" \
+            --arg gluster_version "$GLUSTER_VERSION" \
+            --arg base_image "$BASE_IMAGE" \
+            --arg base_digest "$BASE_DIGEST" \
+            '{image: $image, digest: $digest, gluster_version: $gluster_version,
+              base_image: $base_image, base_digest: $base_digest}' \
+            > builder-image-result/result.json
+
+      - name: Upload immutable image result
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-builder-image-result
+          path: builder-image-result/result.json
+          if-no-files-found: error

@@ -1,0 +1,10 @@
+[Unit]
+Description=GlusterFS packaging conductor
+ConditionPathIsDirectory=/opt/gluster-packaging
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=-/etc/gluster-packaging/release.env
+Environment=CONDUCTOR_BACKUP_SCRIPT=/repo-backups/backup-repository.mjs
+ExecStart=/usr/bin/node /opt/gluster-packaging/scripts/conductor-service.mjs

@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="Browse Eliware GlusterFS packages, repository metadata, and release artifacts."
+    />
+    <link rel="canonical" href="https://glusterfs.eliware.org{{PATH}}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="{{TITLE}} · Eliware GlusterFS" />
+    <meta property="og:description" content="{{OG_DESCRIPTION}}" />
+    <meta property="og:url" content="https://glusterfs.eliware.org{{PATH}}" />
+    <meta property="og:image" content="{{OG_IMAGE}}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{TITLE}} · Eliware GlusterFS" />
+    <meta name="twitter:description" content="{{OG_DESCRIPTION}}" />
+    <meta name="twitter:image" content="{{OG_IMAGE}}" />
+    <title>{{TITLE}} · Eliware GlusterFS</title>
+    <link rel="icon" href="/assets/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="/web/app.css?v=__ASSET_VERSION__" />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background:
+          radial-gradient(circle at 85% 0%, #16385a 0, transparent 32rem),
+          #080d18;
+        color: #e8eef8;
+        font:
+          15px/1.5 system-ui,
+          sans-serif;
+      }
+
+      a {
+        color: #80d9ff;
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .site-header,
+      .page-shell,
+      .site-footer {
+        width: min(1100px, calc(100% - 2.5rem));
+        margin-inline: auto;
+      }
+
+      .site-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.5rem 0;
+        border-bottom: 1px solid #243553;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.7rem;
+        color: #f5f9ff;
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+
+      .brand img {
+        width: 2.5rem;
+        height: 2.5rem;
+        object-fit: contain;
+      }
+
+      .site-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .mobile-nav {
+        display: none;
+      }
+
+      .page-shell {
+        margin-top: 3rem;
+        margin-bottom: 3rem;
+      }
+
+      .directory-summary {
+        margin: 0.85rem 0 0;
+        color: #9fb0c7;
+        font-size: 0.85rem;
+        text-align: center;
+      }
+
+      .validation-summary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(18rem, 30rem);
+        gap: 1.5rem;
+        align-items: center;
+        margin: 0 0 1.25rem;
+        padding: 1.25rem;
+        border: 1px solid #243553;
+        border-radius: 1rem;
+        background: #0d192b;
+      }
+      .validation-summary h2 {
+        margin: 0.2rem 0 0.45rem;
+        font-size: 1.1rem;
+      }
+      .validation-summary p:not(.eyebrow) {
+        margin: 0;
+        color: #9fb0c7;
+        font-size: 0.9rem;
+      }
+      .validation-summary table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .validation-summary th,
+      .validation-summary td {
+        padding: 0.45rem 0.6rem;
+        border-bottom: 1px solid #243553;
+        text-align: center;
+      }
+      .validation-summary th:first-child {
+        text-align: left;
+      }
+      .validation-summary tr:last-child th,
+      .validation-summary tr:last-child td {
+        border-bottom: 0;
+      }
+      .validation-summary .validation-pass,
+      .validation-summary .validation-fail,
+      .validation-summary .validation-skip {
+        display: inline-grid;
+        width: 1.5rem;
+        height: 1.5rem;
+        place-items: center;
+        border-radius: 50%;
+        font-weight: 800;
+      }
+      .validation-summary .validation-pass {
+        color: #082018;
+        background: #74dcb9;
+      }
+      .validation-summary .validation-fail {
+        color: #2b0a12;
+        background: #ff8696;
+      }
+      .validation-summary .validation-skip {
+        color: #d7b86c;
+        background: #3a301b;
+      }
+
+      .directory-tools {
+        display: flex;
+        align-items: end;
+        gap: 1rem;
+        margin: 0 0 1rem;
+      }
+      .modified-cell {
+        white-space: nowrap;
+      }
+
+      .directory-tools label {
+        display: grid;
+        gap: 0.3rem;
+        color: #9fb0c7;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+
+      .directory-tools input,
+      .directory-tools select {
+        min-width: 14rem;
+        padding: 0.65rem 0.75rem;
+        border: 1px solid #243553;
+        border-radius: 0.5rem;
+        background: #0b1526;
+        color: #e8eef8;
+        font: inherit;
+      }
+
+      .directory-hero {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        margin-bottom: 1.75rem;
+        padding: 1.5rem;
+        border: 1px solid #315477;
+        border-radius: 1.25rem;
+        background: linear-gradient(135deg, #12243b, #0c1526);
+        box-shadow: 0 1rem 3rem #0003;
+      }
+
+      .directory-hero img {
+        width: 5rem;
+        height: 5rem;
+        flex: 0 0 auto;
+        object-fit: contain;
+      }
+
+      .eyebrow {
+        margin: 0 0 0.25rem;
+        color: #74dcb9;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        color: #f5f9ff;
+        font-size: clamp(1.4rem, 4vw, 2.35rem);
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+      }
+
+      .path {
+        margin: 0.5rem 0 0;
+        color: #9fb0c7;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.85rem;
+        overflow-wrap: anywhere;
+      }
+
+      .breadcrumbs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin: 0 0 1rem;
+        color: #9fb0c7;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.85rem;
+      }
+
+      .breadcrumbs [aria-current="page"] {
+        color: #f5f9ff;
+      }
+
+      .table-card {
+        overflow: hidden;
+        border: 1px solid #243553;
+        border-radius: 1rem;
+        background: #101b2e;
+        box-shadow: 0 0.75rem 2rem #0002;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid #243553;
+        text-align: left;
+      }
+
+      th {
+        color: #9fb0c7;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      tbody tr:hover {
+        background: #172943;
+      }
+
+      .kind {
+        width: 3rem;
+        color: #74dcb9;
+        font-size: 1.35rem;
+        font-family: "Segoe UI Symbol", system-ui, sans-serif;
+        text-align: center;
+      }
+
+      .kind-symbol {
+        display: inline-grid;
+        width: 1.35rem;
+        height: 1.35rem;
+        place-items: center;
+        font-family: "Segoe UI Symbol", system-ui, sans-serif;
+        line-height: 1;
+      }
+
+      .glyph {
+        display: inline-block;
+        filter: grayscale(1) brightness(0) saturate(100%) invert(78%) sepia(32%)
+          saturate(800%) hue-rotate(110deg) brightness(95%) contrast(90%);
+        transform: scale(1.12);
+      }
+
+      .name {
+        font-weight: 500;
+      }
+
+      .muted {
+        color: #91a3bc;
+      }
+
+      .site-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.5rem 0 2rem;
+        border-top: 1px solid #243553;
+        color: #91a3bc;
+        font-size: 0.85rem;
+      }
+
+      .mobile-nav summary {
+        cursor: pointer;
+        color: #f5f9ff;
+      }
+
+      .mobile-nav-links {
+        display: grid;
+        gap: 0.35rem;
+        margin-top: 0.5rem;
+      }
+
+      .mobile-nav-links a {
+        color: #f5f9ff;
+      }
+
+      @media (max-width: 650px) {
+        .site-header,
+        .page-shell,
+        .site-footer {
+          width: min(100% - 1.5rem, 1100px);
+        }
+
+        .site-header,
+        .site-footer {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .site-header .site-nav {
+          display: none;
+        }
+
+        .mobile-nav {
+          display: block;
+        }
+
+        .page-shell {
+          margin-top: 2rem;
+          margin-bottom: 2rem;
+        }
+
+        .directory-hero {
+          align-items: flex-start;
+          padding: 1.1rem;
+        }
+
+        .validation-summary {
+          grid-template-columns: 1fr;
+        }
+
+        .directory-hero img {
+          width: 3.75rem;
+          height: 3.75rem;
+        }
+
+        th,
+        td {
+          padding: 0.7rem 0.5rem;
+        }
+
+        table {
+          table-layout: fixed;
+        }
+
+        th:nth-child(3),
+        td:nth-child(3),
+        th:nth-child(4),
+        td:nth-child(4) {
+          display: none;
+        }
+
+        th:first-child,
+        td:first-child {
+          width: 2.5rem;
+        }
+
+        td.name {
+          overflow-wrap: anywhere;
+        }
+
+        .directory-tools {
+          align-items: stretch;
+          flex-direction: column;
+          gap: 0.65rem;
+        }
+
+        .directory-tools input,
+        .directory-tools select {
+          width: 100%;
+          min-width: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">
+        <img src="/assets/eliware-brand.svg" alt="Eliware" />
+        <span>Eliware GlusterFS</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="/">Home</a>
+        <a href="/browse.html">Repository</a>
+        <a href="/about.html">About</a>
+      </nav>
+      <details class="mobile-nav">
+        <summary>Menu</summary>
+        <div class="mobile-nav-links">
+          <a href="/">Home</a>
+          <a href="/browse.html">Repository</a>
+          <a href="/about.html">About</a>
+        </div>
+      </details>
+    </header>
+
+    <main class="page-shell">
+      <section class="directory-hero" aria-labelledby="directory-title">
+        <img src="/assets/gluster-logo.webp" alt="GlusterFS" />
+        <div>
+          <p class="eyebrow">Repository browser</p>
+          <h1 id="directory-title">{{TITLE}}</h1>
+          <p class="path">Signed packages and repository metadata</p>
+        </div>
+      </section>
+
+      <nav class="breadcrumbs" aria-label="Breadcrumbs">{{BREADCRUMBS}}</nav>
+
+      {{VALIDATION}}
+
+      <div class="directory-tools" aria-label="Directory filters">
+        <label>
+          <span>Filter packages</span>
+          <input
+            id="directory-filter"
+            type="search"
+            placeholder="Search by package name"
+          />
+        </label>
+        <label>
+          <span>Show</span>
+          <select id="directory-view">
+            <option value="all">All artifacts</option>
+            <option value="runtime">Runtime packages</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th aria-label="Type"></th>
+              <th>Name</th>
+              <th>Size</th>
+              <th>Modified</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ROWS}}
+          </tbody>
+        </table>
+      </div>
+      <p class="directory-summary">{{SUMMARY}}</p>
+    </main>
+
+    <footer class="site-footer">
+      <span
+        >© __COPYRIGHT_YEAR__ Eliware · GlusterFS packaging
+        v__APP_VERSION__</span
+      >
+      <span class="footer-serving-host">Host <code>__HOST_ID__</code></span>
+      <span
+        ><a href="/about">About</a> · <a href="/tos">Terms</a> ·
+        <a href="/policy">Policy</a> ·
+        <a href="/metadata/catalog.json">Catalog</a> ·
+        <a href="/healthz">Health</a></span
+      >
+    </footer>
+    <script>
+      const filter = document.querySelector("#directory-filter");
+      const view = document.querySelector("#directory-view");
+      const rows = [...document.querySelectorAll(".table-card tbody tr")];
+      const localDateTime = (value) => {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        return new Intl.DateTimeFormat(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          timeZoneName: "short",
+        }).format(date);
+      };
+      document.querySelectorAll("[data-modified]").forEach((cell) => {
+        const formatted = localDateTime(cell.dataset.modified);
+        if (formatted) cell.textContent = formatted;
+      });
+      const updateRows = () => {
+        const query = filter.value.trim().toLowerCase();
+        const runtimeOnly = view.value === "runtime";
+        rows.forEach((row) => {
+          const name = row.dataset.name || row.textContent.toLowerCase();
+          const hiddenArtifact = /-debuginfo|-devel|\.src\.rpm/.test(name);
+          row.hidden = !name.includes(query) || (runtimeOnly && hiddenArtifact);
+        });
+      };
+      filter.addEventListener("input", updateRows);
+      view.addEventListener("change", updateRows);
+    </script>
+  </body>
+</html>

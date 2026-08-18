@@ -1,0 +1,99 @@
+name: Publish HTTP repository image
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag to publish
+        required: true
+        default: v0.1.0
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: http-image-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 26.x
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Prepare HTTP image context
+        env:
+          HTTP_IMAGE_CONTEXT: ${{ runner.temp }}/gluster-http-context
+        run: npm run prepare:http-image
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/eliware/gluster-repository-http
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest
+            type=raw,value=${{ inputs.image_tag }},enable=${{ inputs.image_tag != '' }}
+      - name: Build HTTP image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ runner.temp }}/gluster-http-context
+          file: containers/repository-http.Dockerfile
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Smoke test HTTP image
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -Eeuo pipefail
+          image="$(printf '%s\n' "$IMAGE_TAGS" | head -n 1)"
+          container="gluster-http-smoke-${GITHUB_RUN_ID}"
+          cleanup() { docker rm --force "$container" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          docker run --detach --name "$container" --publish 18080:8080 "$image"
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$container"
+          exit 1
+      - name: Push validated image tags
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -Eeuo pipefail
+          while IFS= read -r image; do
+            test -n "$image"
+            docker push "$image"
+          done <<< "$IMAGE_TAGS"
+      - name: Record immutable digest
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -Eeuo pipefail
+          image="$(printf '%s\n' "$IMAGE_TAGS" | head -n 1)"
+          digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image" | sed 's/.*@//')"
+          test -n "$digest"
+          echo "Published $image@$digest"

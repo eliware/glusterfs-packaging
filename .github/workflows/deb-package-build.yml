@@ -1,0 +1,125 @@
+name: Build DEB package candidate
+run-name: Build DEB package candidate (${{ inputs.dispatch_id }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel: { required: true, type: choice, options: [stable, rolling] }
+      source_ref: { required: true, type: string }
+      source_commit: { required: true, type: string }
+      gluster_version: { required: true, type: string }
+      package_version: { required: true, type: string }
+      candidate_id: { required: true, type: string }
+      workspace_dir: { required: true, type: string }
+      candidate_dir: { required: true, type: string }
+      target_os: { required: true, type: choice, options: [debian, ubuntu] }
+      deb_suite: { required: true, type: choice, options: [bookworm, noble] }
+      dispatch_id: { required: false, type: string, default: "" }
+      conductor_run_id: { required: true, type: string }
+
+permissions: { contents: read }
+
+jobs:
+  build:
+    runs-on: ${{ inputs.target_os == 'ubuntu' && 'eliware-ubuntu-builder' || 'eliware-deb-builder' }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build Debian and Ubuntu candidates
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          WORKSPACE_DIR: ${{ inputs.workspace_dir }}
+          CANDIDATE_DIR: ${{ inputs.candidate_dir }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          GLUSTER_VERSION: ${{ inputs.gluster_version }}
+          PACKAGE_VERSION: ${{ inputs.package_version }}
+          TARGET_OS: ${{ inputs.target_os }}
+          DEB_SUITE: ${{ inputs.deb_suite }}
+          CONDUCTOR_RUN_ID: ${{ inputs.conductor_run_id }}
+        run: |
+          set -Eeuo pipefail
+          RAM_ROOT="/srv/workspace/gluster-build/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ inputs.candidate_id }}"
+          SOURCE_DIR_RAM="$RAM_ROOT/source"
+          out="$RAM_ROOT/output/deb/$TARGET_OS/$DEB_SUITE/amd64/${{ inputs.gluster_version }}"
+          PERSISTENT_CCACHE="$WORKSPACE_DIR/ccache"
+          RAM_CCACHE="$RAM_ROOT/ccache"
+          BUILD_LOG="$WORKSPACE_DIR/logs/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ inputs.candidate_id }}.log"
+          cleanup() {
+            status=$?
+            trap - EXIT INT TERM
+            mkdir -p "$PERSISTENT_CCACHE"
+            if ! cp -a "$RAM_CCACHE"/. "$PERSISTENT_CCACHE"/; then
+              echo "Failed to synchronize ccache to $PERSISTENT_CCACHE"
+              [ "$status" -eq 0 ] && status=1
+            fi
+            rm -rf -- "$RAM_ROOT"
+            exit "$status"
+          }
+          trap cleanup EXIT
+          trap 'exit 143' INT TERM
+          rm -rf -- "$RAM_ROOT"
+          mkdir -p "$RAM_ROOT" "$out" "$RAM_CCACHE" "$(dirname "$BUILD_LOG")"
+          if [ -d "$PERSISTENT_CCACHE" ]; then
+            cp -a "$PERSISTENT_CCACHE"/. "$RAM_CCACHE"/
+          fi
+          ccache --max-size=1G
+          export CCACHE_DIR="$RAM_CCACHE"
+          exec > >(tee "$BUILD_LOG") 2>&1
+          echo "Build log: $BUILD_LOG"
+          for attempt in 1 2 3 4 5; do
+            rm -rf -- "$SOURCE_DIR_RAM"
+            if git clone --filter=blob:none --no-tags --no-checkout \
+              https://github.com/gluster/glusterfs.git "$SOURCE_DIR_RAM"; then
+              break
+            fi
+            [ "$attempt" -eq 5 ] && exit 1
+            sleep $((attempt * 5))
+          done
+          for attempt in 1 2 3 4 5; do
+            if git -C "$SOURCE_DIR_RAM" fetch --depth=1 origin "$SOURCE_COMMIT"; then
+              break
+            fi
+            [ "$attempt" -eq 5 ] && exit 1
+            sleep $((attempt * 5))
+          done
+          git -C "$SOURCE_DIR_RAM" checkout --detach FETCH_HEAD
+          BUILD_CONFIG="$GITHUB_WORKSPACE/build-config/${TARGET_OS}-${DEB_SUITE}-amd64.env" \
+          REPO_ROOT="$GITHUB_WORKSPACE" SOURCE_REF="$SOURCE_COMMIT" \
+          SOURCE_DIR="$SOURCE_DIR_RAM" WORKSPACE_ROOT="$RAM_ROOT/build" OUTPUT_DIR="$out" \
+          DEB_PACKAGE_VERSION="$PACKAGE_VERSION" APPLY_PATCHES=1 JOBS=10 \
+          node scripts/build-debs.mjs
+          PACKAGE_FORMAT=deb PACKAGE_DIR="$out" \
+            SMOKE_RESULT="$RAM_ROOT/validation.json" \
+            SMOKE_BRICK_ROOT="/var/lib/gluster-smoke/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            SMOKE_DISTRIBUTION="$TARGET_OS-$DEB_SUITE" \
+            node tests/smoke-installed-package.mjs
+          candidate_out="$CANDIDATE_DIR/deb/$TARGET_OS/$DEB_SUITE/amd64/${{ inputs.gluster_version }}"
+          mkdir -p "$candidate_out"
+          cp -a "$out"/. "$candidate_out/"
+          node scripts/make-apt-repository.mjs "$candidate_out" stable amd64
+          cp "$RAM_ROOT/validation.json" "$CANDIDATE_DIR/validation.json"
+          CHANNEL="${{ inputs.channel }}" SOURCE_REF="${{ inputs.source_ref }}" SOURCE_COMMIT="${{ inputs.source_commit }}" \
+          GLUSTER_VERSION="${{ inputs.gluster_version }}" TARGET_OS="$TARGET_OS" DEB_SUITE="$DEB_SUITE" \
+          CANDIDATE_DIR="$CANDIDATE_DIR" PACKAGE_VERSION="${{ inputs.package_version }}" \
+          VALIDATION_FILE="$RAM_ROOT/validation.json" BUILD_LOG="$BUILD_LOG" \
+          node --input-type=module -e '
+            import { readFile, writeFile } from "node:fs/promises";
+            const validation = JSON.parse(await readFile(process.env.VALIDATION_FILE, "utf8"));
+            await writeFile(process.env.CANDIDATE_DIR + "/result.json", JSON.stringify({
+              package_format: "deb", channel: process.env.CHANNEL,
+              distribution: process.env.TARGET_OS, suite: process.env.DEB_SUITE,
+              source_ref: process.env.SOURCE_REF, source_commit: process.env.SOURCE_COMMIT,
+              version: process.env.GLUSTER_VERSION, package_version: process.env.PACKAGE_VERSION,
+              candidate_dir: process.env.CANDIDATE_DIR, build_log: process.env.BUILD_LOG,
+              smoke_stage: "smoke-1", validation
+            }, null, 2) + "\n");
+          '
+          node scripts/candidate-readiness.mjs \
+            --write \
+            --candidate-dir "$CANDIDATE_DIR" \
+            --package-dir "$candidate_out"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-build-result
+          path: ${{ inputs.candidate_dir }}/result.json
+          if-no-files-found: error

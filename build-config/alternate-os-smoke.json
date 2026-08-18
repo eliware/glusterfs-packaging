@@ -1,0 +1,38 @@
+[
+  {
+    "id": "centos-stream-10",
+    "label": "CentOS Stream 10",
+    "image": "quay.io/centos/centos:stream10",
+    "repositories": [
+      "dnf -y install dnf-plugins-core epel-release",
+      "dnf config-manager --set-enabled crb"
+    ]
+  },
+  {
+    "id": "rocky-10",
+    "label": "Rocky Linux 10",
+    "image": "rockylinux/rockylinux:10",
+    "repositories": [
+      "dnf -y install dnf-plugins-core epel-release",
+      "dnf config-manager --set-enabled crb"
+    ]
+  },
+  {
+    "id": "almalinux-10",
+    "label": "AlmaLinux 10",
+    "image": "almalinux:10",
+    "repositories": [
+      "dnf -y install dnf-plugins-core epel-release",
+      "dnf config-manager --set-enabled crb"
+    ]
+  },
+  {
+    "id": "oracle-linux-10",
+    "label": "Oracle Linux 10",
+    "image": "oraclelinux:10",
+    "repositories": [
+      "dnf -y install dnf-plugins-core oracle-epel-release-el10",
+      "dnf config-manager --set-enabled ol10_codeready_builder"
+    ]
+  }
+]

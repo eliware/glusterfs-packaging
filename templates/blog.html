@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en" data-page="blog">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="__BLOG_DESCRIPTION__" />
+    <link rel="canonical" href="__BLOG_CANONICAL__" />
+    <meta property="og:type" content="__BLOG_OG_TYPE__" />
+    <meta property="og:title" content="__BLOG_TITLE__" />
+    <meta property="og:description" content="__BLOG_DESCRIPTION__" />
+    <meta property="og:url" content="__BLOG_CANONICAL__" />
+    <link rel="icon" href="/assets/favicon.ico" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="Eliware GlusterFS blog"
+      href="/feed.xml"
+    />
+    <link rel="stylesheet" href="/web/app.css?v=__ASSET_VERSION__" />
+    <title>__BLOG_TITLE__</title>
+    <script type="application/ld+json">
+      __BLOG_JSONLD__
+    </script>
+  </head>
+  <body>
+    <nav class="navbar sticky-top">
+      <div class="container py-2">
+        <a
+          class="navbar-brand fw-semibold d-flex align-items-center gap-2"
+          href="/"
+        >
+          <img
+            class="brand-logo"
+            src="/assets/eliware-brand.svg"
+            width="52"
+            height="52"
+            alt="Eliware"
+          />
+          <span>GlusterFS</span>
+        </a>
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="/#install">Install</a>
+          <a href="/#containers">Containers</a>
+          <a href="/blog">Blog</a>
+          <a href="/about">About</a>
+        </nav>
+      </div>
+    </nav>
+    <main class="container blog-page">
+      <header class="blog-hero">
+        <p class="eyebrow">Eliware GlusterFS</p>
+        <h1>News, guides, and release notes</h1>
+        <p class="lead">
+          Practical notes about packages, rolling releases, and GlusterFS
+          operations.
+        </p>
+      </header>
+      <p id="blog-status" role="status">Loading posts…</p>
+      <section id="blog-list" class="blog-grid" aria-live="polite"></section>
+      <article id="blog-article" class="blog-article d-none"></article>
+    </main>
+    <footer class="site-footer">
+      <div
+        class="container py-4 d-flex flex-wrap justify-content-between gap-2"
+      >
+        <span
+          >© __COPYRIGHT_YEAR__ Eliware · GlusterFS packaging
+          v__APP_VERSION__</span
+        ><span class="footer-serving-host">Host <code>__HOST_ID__</code></span
+        ><span
+          ><a href="/about">About</a><span class="mx-2">·</span
+          ><a href="/tos">Terms</a><span class="mx-2">·</span
+          ><a href="/policy">Policy</a><span class="mx-2">·</span
+          ><a href="/metadata/catalog.json">Catalog</a
+          ><span class="mx-2">·</span><a href="/healthz">Health</a></span
+        >
+      </div>
+    </footer>
+    <script src="/web/app.js?v=__ASSET_VERSION__" defer></script>
+  </body>
+</html>

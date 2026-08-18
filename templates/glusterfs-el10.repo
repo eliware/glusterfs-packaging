@@ -1,0 +1,11 @@
+[eliware-glusterfs]
+name=Eliware GlusterFS EL10
+# Dependencies are provided by the normal EL10 BaseOS/AppStream repositories,
+# CentOS Stream 10 CRB, and EPEL 10. Enable CRB and EPEL before installation.
+baseurl=https://glusterfs.eliware.org/el10/x86_64/stable/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://glusterfs.eliware.org/keys/RPM-GPG-KEY-ELIWARE-GLUSTER
+metadata_expire=6h
+skip_if_unavailable=False

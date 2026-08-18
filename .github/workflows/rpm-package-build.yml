@@ -1,0 +1,129 @@
+name: Build RPM package candidate
+run-name: Build RPM package candidate (${{ inputs.dispatch_id }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel: { required: true, type: choice, options: [stable, rolling] }
+      source_ref: { required: true, type: string }
+      source_commit: { required: true, type: string }
+      gluster_version: { required: true, type: string }
+      package_version: { required: true, type: string }
+      candidate_id: { required: true, type: string }
+      workspace_dir: { required: true, type: string }
+      candidate_dir: { required: true, type: string }
+      dispatch_id: { required: false, type: string, default: "" }
+      conductor_run_id: { required: true, type: string }
+
+permissions: { contents: read }
+
+jobs:
+  build:
+    runs-on: eliware-rpm-builder
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build candidate
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          GLUSTER_VERSION: ${{ inputs.gluster_version }}
+          PACKAGE_VERSION: ${{ inputs.package_version }}
+          WORKSPACE_DIR: ${{ inputs.workspace_dir }}
+          CANDIDATE_DIR: ${{ inputs.candidate_dir }}
+          BUILD_CONFIG: ${{ github.workspace }}/build-config/el10-x86_64.env
+          REPO_ROOT: ${{ github.workspace }}
+          SOURCE_MAIN_DIR: ${{ inputs.workspace_dir }}/source-main
+          SOURCE_DIR: ${{ inputs.workspace_dir }}/worktree-${{ inputs.channel }}-rpm
+          WORKSPACE_ROOT: ${{ inputs.workspace_dir }}/workspace-${{ inputs.channel }}-rpm
+          OUTPUT_DIR: ${{ inputs.candidate_dir }}/rpm
+          STABLE_DIR: ${{ inputs.candidate_dir }}/rpm
+          PACKAGE_VERSION_OVERRIDE: ${{ inputs.package_version }}
+          APPLY_PATCHES: "1"
+          JOBS: "10"
+          CONDUCTOR_RUN_ID: ${{ inputs.conductor_run_id }}
+        run: |
+          set -Eeuo pipefail
+          RAM_ROOT="/srv/workspace/gluster-build/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ inputs.candidate_id }}"
+          SOURCE_DIR_RAM="$RAM_ROOT/source"
+          BUILD_ROOT="$RAM_ROOT/build"
+          OUTPUT_DIR_RAM="$RAM_ROOT/output/rpm"
+          PERSISTENT_CCACHE="$WORKSPACE_DIR/ccache"
+          RAM_CCACHE="$RAM_ROOT/ccache"
+          BUILD_LOG="$WORKSPACE_DIR/logs/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ inputs.candidate_id }}.log"
+          cleanup() {
+            status=$?
+            trap - EXIT INT TERM
+            mkdir -p "$PERSISTENT_CCACHE"
+            if ! cp -a "$RAM_CCACHE"/. "$PERSISTENT_CCACHE"/; then
+              echo "Failed to synchronize ccache to $PERSISTENT_CCACHE"
+              [ "$status" -eq 0 ] && status=1
+            fi
+            rm -rf -- "$RAM_ROOT"
+            exit "$status"
+          }
+          trap cleanup EXIT
+          trap 'exit 143' INT TERM
+          rm -rf -- "$RAM_ROOT"
+          mkdir -p "$RAM_ROOT" "$OUTPUT_DIR_RAM" "$RAM_CCACHE" "$(dirname "$BUILD_LOG")"
+          if [ -d "$PERSISTENT_CCACHE" ]; then
+            cp -a "$PERSISTENT_CCACHE"/. "$RAM_CCACHE"/
+          fi
+          ccache --max-size=1G
+          export CCACHE_DIR="$RAM_CCACHE"
+          exec > >(tee "$BUILD_LOG") 2>&1
+          echo "Build log: $BUILD_LOG"
+          for attempt in 1 2 3 4 5; do
+            rm -rf -- "$SOURCE_DIR_RAM"
+            if git clone --filter=blob:none --no-tags --no-checkout \
+              https://github.com/gluster/glusterfs.git "$SOURCE_DIR_RAM"; then
+              break
+            fi
+            [ "$attempt" -eq 5 ] && exit 1
+            sleep $((attempt * 5))
+          done
+          for attempt in 1 2 3 4 5; do
+            if git -C "$SOURCE_DIR_RAM" fetch --depth=1 origin "$SOURCE_COMMIT"; then
+              break
+            fi
+            [ "$attempt" -eq 5 ] && exit 1
+            sleep $((attempt * 5))
+          done
+          git -C "$SOURCE_DIR_RAM" checkout --detach FETCH_HEAD
+          export SOURCE_DIR="$SOURCE_DIR_RAM"
+          export SOURCE_MAIN_DIR=""
+          export WORKSPACE_ROOT="$BUILD_ROOT"
+          export OUTPUT_DIR="$OUTPUT_DIR_RAM"
+          export STABLE_DIR="$RAM_ROOT/stable"
+          export SELINUX_SOURCE_DIR="$RAM_ROOT/selinux-source"
+          export CCACHE_DIR="$RAM_ROOT/ccache"
+          node scripts/build-workspace.mjs
+          createrepo_c --update "$OUTPUT_DIR_RAM"
+          sha256sum "$OUTPUT_DIR_RAM"/*.rpm > "$OUTPUT_DIR_RAM/SHA256SUMS"
+          PACKAGE_FORMAT=rpm \
+            PACKAGE_DIR="$OUTPUT_DIR_RAM" \
+            SMOKE_RESULT="$RAM_ROOT/validation.json" \
+            SMOKE_BRICK_ROOT="$RAM_ROOT/smoke-brick" \
+            SMOKE_DISTRIBUTION=centos-stream-10 \
+            node tests/smoke-installed-package.mjs
+          mkdir -p "$CANDIDATE_DIR/rpm"
+          cp -a "$OUTPUT_DIR_RAM"/. "$CANDIDATE_DIR/rpm/"
+          cp "$RAM_ROOT/validation.json" "$CANDIDATE_DIR/validation.json"
+          createrepo_c --update "$CANDIDATE_DIR/rpm"
+          sha256sum "$CANDIDATE_DIR"/rpm/*.rpm > "$CANDIDATE_DIR/rpm/SHA256SUMS"
+          jq -n --arg format rpm --arg channel "$CHANNEL" --arg source_ref "$SOURCE_REF" \
+            --arg source_commit "$SOURCE_COMMIT" --arg version "$GLUSTER_VERSION" \
+            --arg package_version "$PACKAGE_VERSION" --arg candidate "$CANDIDATE_DIR" \
+            --arg build_log "$BUILD_LOG" \
+            --slurpfile validation "$RAM_ROOT/validation.json" \
+            '{package_format:$format,channel:$channel,source_ref:$source_ref,source_commit:$source_commit,version:$version,package_version:$package_version,candidate_dir:$candidate,build_log:$build_log,smoke_stage:"smoke-1",validation:$validation[0]}' \
+            > "$CANDIDATE_DIR/result.json"
+          node scripts/candidate-readiness.mjs \
+            --write \
+            --candidate-dir "$CANDIDATE_DIR" \
+            --package-dir "$CANDIDATE_DIR/rpm"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-build-result
+          path: ${{ inputs.candidate_dir }}/result.json
+          if-no-files-found: error

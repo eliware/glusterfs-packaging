@@ -1,0 +1,14 @@
+{
+  "metadata_version": "0.1.0",
+  "schema": 1,
+  "generated": "seed",
+  "active_generation": "seed",
+  "stable": {},
+  "preview": {
+    "available": false,
+    "retention": 30,
+    "latest": null,
+    "items": []
+  },
+  "images": []
+}

@@ -6,7 +6,7 @@ Reproducible GlusterFS package builds, signed repositories, runtime images, and
 provenance records maintained by Eliware.
 
 [![license](https://img.shields.io/github/license/eliware/glusterfs-packaging.svg)](LICENSE)
-[![build status](https://github.com/eliware/glusterfs-packaging/actions/workflows/rpm-package-build.yml/badge.svg)](https://github.com/eliware/glusterfs-packaging/actions)
+[![build status](https://github.com/eliware/glusterfs-packaging/actions/workflows/ci.yml/badge.svg)](https://github.com/eliware/glusterfs-packaging/actions/workflows/ci.yml)
 
 The public repository and release catalog are available at
 [glusterfs.eliware.org](https://glusterfs.eliware.org/).

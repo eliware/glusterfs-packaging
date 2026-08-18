@@ -103,11 +103,13 @@ Deferred engineering work and future-release improvements are tracked in
 
 ## Metadata and provenance
 
-Every persistent metadata document carries a `metadata_version` derived from
-the root `package.json` version. When a metadata shape changes, a migration is
-added under [`migrations/`](migrations/) using the target package version.
-Readers apply migrations in order, atomically persist successful changes, and
-reject missing, legacy, unknown, or newer metadata versions.
+Every persistent metadata document carries a `metadata_version` identifying
+the newest schema-changing migration. It is deliberately independent of the
+application version in the root `package.json`. When a metadata shape changes,
+a migration is added under [`migrations/`](migrations/) using the target
+package version. Readers apply migrations in order, atomically persist
+successful changes, and reject missing, legacy, unknown, or newer metadata
+versions. Application-only releases leave the marker unchanged.
 
 Provenance records link package candidates to source commits, package
 validation, repository metadata, image inputs, image digests, container

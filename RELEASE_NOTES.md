@@ -90,7 +90,9 @@ infrastructure outside the repository.
 
 ### Metadata, provenance, and release evidence
 
-- Defines versioned metadata contracts tied to the root `package.json`.
+- Defines versioned metadata contracts whose migration targets are tied to
+  package releases while the persisted schema marker remains independent of
+  application-only version changes.
 - Rejects missing, legacy, unknown, or newer metadata versions instead of
   silently inferring values.
 - Provides ordered migration modules for future metadata-shape changes.

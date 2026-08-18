@@ -51,15 +51,3 @@ test("release report aggregates package and image lanes by platform", () => {
   );
   expect(data.validation).toEqual({ passed: 2, total: 2 });
 });
-
-test("public templates expose the latest social card", async () => {
-  const [index, browse, directory] = await Promise.all([
-    readFile("templates/index.html", "utf8"),
-    readFile("templates/browse.html", "utf8"),
-    readFile("templates/directory-listing.html", "utf8"),
-  ]);
-  expect(index).toContain("og:image:width");
-  expect(index).toContain("/metadata/latest-release-card.png");
-  expect(browse).toContain("twitter:card");
-  expect(directory).toContain("{{OG_IMAGE}}");
-});

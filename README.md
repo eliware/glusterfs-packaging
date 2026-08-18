@@ -2,8 +2,8 @@
 
 ## GlusterFS Packaging
 
-Reproducible GlusterFS package builds, signed repositories, runtime images,
-provenance records, and the public repository website maintained by Eliware.
+Reproducible GlusterFS package builds, signed repositories, runtime images, and
+provenance records maintained by Eliware.
 
 [![license](https://img.shields.io/github/license/eliware/glusterfs-packaging.svg)](LICENSE)
 [![build status](https://github.com/eliware/glusterfs-packaging/actions/workflows/rpm-package-build.yml/badge.svg)](https://github.com/eliware/glusterfs-packaging/actions)
@@ -25,8 +25,8 @@ operates as a complete release system with:
 - Independent package and image checkpoints so successful work is reusable.
 - Package Smoke-1, package Smoke-2, and container Smoke-3 validation gates.
 - Automated rolling previews with bounded retention.
-- A dynamic repository website with installation wizards, package browsing,
-  image browsing, validation results, release reports, and blog/RSS support.
+- A separate repository HTTP service consumes the published repositories and
+  metadata; its source is maintained in [`eliware/gluster-http`](https://github.com/eliware/gluster-http).
 - Discord notifications for conductor stages, checkpoint completion, and
   failures.
 - Versioned metadata contracts tied to `package.json`, with ordered migration
@@ -118,28 +118,12 @@ paths.
 See [`docs/METADATA.md`](docs/METADATA.md) and
 [`docs/logs.md`](docs/logs.md) for the evidence model.
 
-## Repository website
+## Repository website integration
 
-The HTTP application is part of this repository. It provides:
-
-- Responsive landing, repository browser, image browser, blog, RSS, About,
-  Terms, and policy pages.
-- Generated install commands for RPM and APT targets.
-- Container pull, Dockerfile, Compose, and Kubernetes examples.
-- Live catalog, validation matrix, release dates, image digests, and
-  provenance links.
-- Directory indexes with breadcrumbs, local-time display, sorting, and
-  repository metadata links.
-- `/health`, `/ready`, `/healthz`, and `/readyz` service endpoints.
-
-The web shell is built into the HTTP image. Published packages and release
-metadata are supplied through the configured publication storage at runtime;
-deployment-specific storage details are not part of this repository.
-
-The HTTP image is validated and published by
-[`.github/workflows/http-image.yml`](.github/workflows/http-image.yml) on
-`v*` tags. Blog JSON is read from shared publication storage at runtime, so
-blog updates do not require a new image.
+The separate `eliware/gluster-http` repository serves the published package
+repositories, release metadata, provenance records, and shared-storage blog
+posts. This project remains the source of truth for the package, image,
+metadata, and provenance contracts that the HTTP service adapts.
 
 ## Development
 
@@ -148,7 +132,7 @@ blog updates do not require a new image.
 - Node.js 26 or newer and npm.
 - Git, Docker, GPG, native RPM/DEB tooling, and the relevant build container
   tools for package development.
-- Chromium/Chrome for Puppeteer screenshots and Lighthouse checks.
+- Chromium/Chrome is optional for local release-card rendering.
 
 Install dependencies and run the core checks:
 
@@ -160,21 +144,9 @@ npm run lint
 npm run check
 ```
 
-Build readable and production web assets:
-
-```sh
-npm run build:web
-```
-
-Run live-site browser checks:
-
-```sh
-npm run test:e2e:screenshots
-npm run test:e2e:lighthouse
-```
-
-Generated build output, screenshots, Lighthouse reports, coverage, local
-credentials, and runtime state are ignored by Git.
+Generated build output, coverage, local credentials, and runtime state are
+ignored by Git. Browser screenshots and Lighthouse checks belong to the HTTP
+service repository.
 
 ### Local conductor modes
 
@@ -208,13 +180,10 @@ configuration, never in Git.
 
 ```text
 build-config/       target and distribution inputs
-containers/         pinned builder and HTTP image definitions
+containers/         pinned builder and runtime image definitions
 migrations/         versioned metadata migrations
 scripts/            conductor, build, validation, signing, and publication code
-src/be/              HTTP server and API modules
-src/fe/              browser application modules and styles
-templates/          public HTML templates
-tests/               unit, integration, smoke, and browser checks
+tests/               unit, integration, smoke, and pipeline checks
 docs/                authoritative pipeline and operational documentation
 releases/            tracked release records
 ```

@@ -30,5 +30,3 @@ jobs:
         run: npm run lint
       - name: Audit production dependencies
         run: npm run audit
-      - name: Build web assets
-        run: npm run build:web

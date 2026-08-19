@@ -64,6 +64,12 @@ checkpoint decisions, local Docker Smoke-2 and image tests, package signing,
 repository publication, local GHCR publication, provenance, catalogs, backups,
 and notifications.
 
+The canonical conductor checkpoint state is published at
+`metadata/conductor-state.json` under the configured publication root. The
+local state directory is used only for the global lock, transient status files,
+and local build coordination. This keeps the checkpoint state in the same
+backup generation as the repository artifacts.
+
 ### Module ownership map
 
 The entrypoint remains the coordinator; focused modules own the following
@@ -269,11 +275,14 @@ based on the newest catalog state.
 
 ### 11. Finalize and back up
 
-The conductor records the final run and per-lane checkpoints, sends the
-configured completion or failure notification, runs the configured backup
-script, and removes temporary candidates and logs only after the related
-provenance and publication work is complete. Persistent ccache directories are
-retained unless the reset command explicitly enables cache removal.
+The conductor records the final run and per-lane checkpoints in
+`metadata/conductor-state.json`, sends the configured completion or failure
+notification, and only then runs the configured backup script. The backup
+therefore captures the repository artifacts, provenance, catalog, release
+report, and matching conductor state in one generation. Temporary candidates
+and logs are removed only after the related provenance and publication work is
+complete. Persistent ccache directories are retained unless the reset command
+explicitly enables cache removal.
 
 The daily timer invokes the same service wrapper as a manual service start:
 

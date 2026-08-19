@@ -11,7 +11,7 @@ Versioned metadata includes:
 
 - `metadata/catalog.json` and package/image metadata;
 - generation records and `active-generation.json`;
-- conductor state;
+- `metadata/conductor-state.json`, the canonical conductor checkpoint state;
 - repository indexes and release manifests; and
 - signed provenance records.
 

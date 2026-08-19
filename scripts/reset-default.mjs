@@ -121,6 +121,10 @@ await copySeedMetadata(
   `${repoRoot}/templates/active-generation.seed.json`,
   `${publicationRoot}/metadata/active-generation.json`,
 );
+await copySeedMetadata(
+  `${repoRoot}/templates/conductor-state.seed.json`,
+  `${publicationRoot}/metadata/conductor-state.json`,
+);
 await exec(process.execPath, [
   `${repoRoot}/scripts/generate-repository-index.mjs`,
   "--root",

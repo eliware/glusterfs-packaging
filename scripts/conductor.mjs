@@ -477,7 +477,7 @@ try {
         ...state.checkpoints,
         [lane.id]: checkpoint,
       };
-      await writeFile(stateFile, JSON.stringify(state, null, 2) + "\n");
+      await atomicWrite(stateFile, JSON.stringify(state, null, 2) + "\n");
     });
     return checkpointWrite;
   };
@@ -1459,7 +1459,8 @@ try {
       },
     ].slice(-30),
   };
-  if (!dryRun) await writeFile(stateFile, JSON.stringify(next, null, 2) + "\n");
+  if (!dryRun)
+    await atomicWrite(stateFile, JSON.stringify(next, null, 2) + "\n");
   const validateFinalPublication = () =>
     validatePublishedArtifacts({
       results,

@@ -86,7 +86,7 @@ jobs:
           BUILD_CONFIG="$GITHUB_WORKSPACE/build-config/${TARGET_OS}-${DEB_SUITE}-amd64.env" \
           REPO_ROOT="$GITHUB_WORKSPACE" SOURCE_REF="$SOURCE_COMMIT" \
           SOURCE_DIR="$SOURCE_DIR_RAM" WORKSPACE_ROOT="$RAM_ROOT/build" OUTPUT_DIR="$out" \
-          DEB_PACKAGE_VERSION="$PACKAGE_VERSION" APPLY_PATCHES=1 JOBS=10 \
+          DEB_PACKAGE_VERSION="$PACKAGE_VERSION" APPLY_PATCHES=1 JOBS=6 \
           node scripts/build-debs.mjs
           PACKAGE_FORMAT=deb PACKAGE_DIR="$out" \
             SMOKE_RESULT="$RAM_ROOT/validation.json" \

@@ -40,7 +40,7 @@ jobs:
           STABLE_DIR: ${{ inputs.candidate_dir }}/rpm
           PACKAGE_VERSION_OVERRIDE: ${{ inputs.package_version }}
           APPLY_PATCHES: "1"
-          JOBS: "10"
+          JOBS: "6"
           CONDUCTOR_RUN_ID: ${{ inputs.conductor_run_id }}
         run: |
           set -Eeuo pipefail

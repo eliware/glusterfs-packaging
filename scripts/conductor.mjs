@@ -372,7 +372,9 @@ try {
   if (dockerHubQuota.checked)
     log(
       "Docker Hub quota",
-      `${dockerHubQuota.remaining}/${dockerHubQuota.limit} remaining`,
+      dockerHubQuota.remaining === null || dockerHubQuota.limit === null
+        ? "quota headers unavailable"
+        : `${dockerHubQuota.remaining}/${dockerHubQuota.limit} remaining`,
     );
   const resolveBase = async (name, reference) => {
     if (/@sha256:[0-9a-f]{64}$/.test(reference)) return reference;

@@ -56,3 +56,19 @@ test("returns quota when Docker Hub has capacity", async () => {
     remaining: 42,
   });
 });
+
+test("does not report NaN when Docker Hub omits quota headers", async () => {
+  const fetchMock = jest
+    .fn()
+    .mockResolvedValueOnce(response(200, {}, { token: "test-token" }))
+    .mockResolvedValueOnce(response(200, {}));
+  await expect(
+    checkDockerHubRateLimit(["almalinux:10"], fetchMock, {
+      credentials: { username: "test-user", password: "test-token" },
+    }),
+  ).resolves.toMatchObject({
+    checked: true,
+    limit: null,
+    remaining: null,
+  });
+});

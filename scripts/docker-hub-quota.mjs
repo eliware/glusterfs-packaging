@@ -39,6 +39,11 @@ function windowSeconds(value) {
   return match ? Number(match[1]) : 3600;
 }
 
+function quotaNumber(value) {
+  const match = /^\s*(\d+)/.exec(String(value || ""));
+  return match ? Number(match[1]) : null;
+}
+
 export async function checkDockerHubRateLimit(
   references,
   fetchImpl = globalThis.fetch,
@@ -69,23 +74,27 @@ export async function checkDockerHubRateLimit(
     method: "HEAD",
     headers: { Authorization: `Bearer ${token}` },
   });
-  const limit = header(response, "ratelimit-limit");
-  const remaining = Number.parseInt(
-    header(response, "ratelimit-remaining"),
-    10,
-  );
-  const retryAfter = Number.parseInt(header(response, "retry-after"), 10);
+  const limitHeader = header(response, "ratelimit-limit");
+  const remainingHeader = header(response, "ratelimit-remaining");
+  const limit = quotaNumber(limitHeader);
+  const remaining = quotaNumber(remainingHeader);
+  const retryAfter = quotaNumber(header(response, "retry-after"));
   if (
     response.status === 429 ||
-    (Number.isInteger(remaining) && remaining <= 0)
+    (remaining !== null && remaining <= 0)
   ) {
     const wait = Number.isInteger(retryAfter)
       ? retryAfter
-      : windowSeconds(limit);
+      : windowSeconds(limitHeader);
     throw new DockerHubRateLimitError(
-      `Docker Hub rate limit exhausted (${limit || "unknown limit"}; ${remaining || 0} remaining)`,
+      `Docker Hub rate limit exhausted (${limit ?? "unknown limit"}; ${remaining ?? 0} remaining)`,
       wait,
     );
   }
-  return { checked: true, limit, remaining };
+  return {
+    checked: true,
+    limit,
+    remaining,
+    windowSeconds: windowSeconds(limitHeader),
+  };
 }

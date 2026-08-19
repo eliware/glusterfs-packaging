@@ -43,12 +43,7 @@ import {
   packageSmoke2Complete,
 } from "./package-validation.mjs";
 import { runPackageSmoke2 } from "./package-lane.mjs";
-import {
-  compareStatusReports,
-  createStatusDocument,
-  filterDisplayedStatusReports,
-  formatStatusLine,
-} from "./conductor-status.mjs";
+import { createConductorStatus } from "./conductor-logging.mjs";
 import { buildLanes, imageTargetsForLane } from "./lane-config.mjs";
 import {
   compactTimestamp,
@@ -88,7 +83,7 @@ const {
   workspaceRoot,
 } = createConductorConfig({ cliArgs, cliNoRebuild, cliSkipPublication });
 let statusDirectory = "";
-let statusReporter;
+let conductorStatus;
 let completedNoOp = false;
 const log = (message, details = "") => {
   const suffix = details ? ` ${details}` : "";
@@ -170,66 +165,13 @@ try {
   const runId = `${compactTimestamp()}-${crypto.randomUUID().slice(0, 8)}`;
   statusDirectory = path.join(stateRoot, "status", runId);
   await mkdir(statusDirectory, { recursive: true });
-  const reportStatuses = async () => {
-    let reports = [];
-    try {
-      reports = await Promise.all(
-        (await readdir(statusDirectory))
-          .filter((name) => name.endsWith(".json"))
-          .map(async (name) => {
-            const report = JSON.parse(
-              await readFile(path.join(statusDirectory, name), "utf8"),
-            );
-            if (report.log_file) {
-              try {
-                const contents = await readFile(report.log_file, "utf8");
-                report.log = `${contents.split(/\r?\n/).filter(Boolean).length}`;
-              } catch {}
-            }
-            return report;
-          }),
-      );
-    } catch {
-      return;
-    }
-    reports = filterDisplayedStatusReports(reports).sort(compareStatusReports);
-    if (!reports.length) return;
-    log("status report");
-    for (const report of reports) {
-      log(formatStatusLine(report));
-    }
-    console.log("====================================");
-  };
-  const localStatus = (key, label, stage) => {
-    const file = path.join(
-      statusDirectory,
-      `local-${key.replace(/[^a-zA-Z0-9_.-]+/g, "-")}.json`,
-    );
-    const update = async (status) => {
-      await writeFile(
-        `${file}.tmp`,
-        `${JSON.stringify(
-          createStatusDocument({
-            label,
-            stage,
-            runId,
-            updated: new Date().toISOString(),
-            status,
-          }),
-          null,
-          2,
-        )}\n`,
-      );
-      await rename(`${file}.tmp`, file);
-    };
-    return { update };
-  };
-  statusReporter = setInterval(() => {
-    reportStatuses().catch((error) =>
-      log("status report failed", error.message),
-    );
-  }, 10000);
-  statusReporter.unref();
+  conductorStatus = createConductorStatus({
+    directory: statusDirectory,
+    runId,
+    log,
+  });
+  const localStatus = conductorStatus.localStatus;
+  conductorStatus.start();
   log(`run ${runId} started`, dryRun ? "(dry-run)" : "");
   const readJson = async (file, fallback) => {
     try {
@@ -697,11 +639,12 @@ try {
     ];
     if (imageResult.build_log && (await exists(imageResult.build_log)))
       args.push("--asset", "image-build-log", imageResult.build_log);
-    await runInteractive("node", args, { env: process.env });
-    await runInteractive("node", [
-      path.join(repoRoot, "scripts/verify-provenance.mjs"),
-      outputDir,
-    ]);
+    await runInteractive("node", args, { env: process.env, silent: true });
+    await runInteractive(
+      "node",
+      [path.join(repoRoot, "scripts/verify-provenance.mjs"), outputDir],
+      { silent: true },
+    );
     await rm(recordFile, { force: true });
     await rm(validationFile, { force: true });
     return `/metadata/runs/${runId}/${lane.id}/${distribution}/provenance.json`;
@@ -961,24 +904,32 @@ try {
               "--base-image",
               imageResult.base_image || baseImages[imageBaseKey],
             ],
-            { env: process.env },
+            { env: process.env, silent: true },
           );
           await rename(
             output,
             path.join(publicationRoot, "metadata/catalog.json"),
           );
-          await runInteractive("node", [
-            path.join(repoRoot, "scripts/generate-repository-index.mjs"),
-            "--root",
-            publicationRoot,
-          ]);
-          await runInteractive("node", [
-            path.join(repoRoot, "scripts/write-release-manifest.mjs"),
-            "--root",
-            publicationRoot,
-            "--generation",
-            active.generation,
-          ]);
+          await runInteractive(
+            "node",
+            [
+              path.join(repoRoot, "scripts/generate-repository-index.mjs"),
+              "--root",
+              publicationRoot,
+            ],
+            { silent: true },
+          );
+          await runInteractive(
+            "node",
+            [
+              path.join(repoRoot, "scripts/write-release-manifest.mjs"),
+              "--root",
+              publicationRoot,
+              "--generation",
+              active.generation,
+            ],
+            { silent: true },
+          );
         });
       } finally {
         await rm(containerValidationDir, { recursive: true, force: true });
@@ -994,7 +945,7 @@ try {
             `${lane.id}-${lane.version}`,
             candidate,
           ],
-          { env: process.env },
+          { env: process.env, silent: true },
         );
       });
       log(`${lane.id}: packages published`);
@@ -1389,6 +1340,7 @@ try {
       result = await run("node", args, {
         capture: true,
         stream: true,
+        silent: true,
         env: {
           ...process.env,
           CONDUCTOR_STATUS_DIR: statusDirectory,
@@ -1486,7 +1438,7 @@ try {
         "--output",
         path.join(publicationRoot, "metadata/catalog.json"),
       ],
-      { env: process.env },
+      { env: process.env, silent: true },
     );
     log("catalog rebuilt from publication records");
   };
@@ -1711,13 +1663,13 @@ try {
     throw error;
   }
 } finally {
-  if (statusReporter) clearInterval(statusReporter);
+  if (conductorStatus) conductorStatus.stop();
   if (statusDirectory)
     await rm(statusDirectory, { recursive: true, force: true });
   if (backupScript && !dryRun && !completedNoOp) {
     try {
       log("running repository backup");
-      await run("node", [backupScript], { stream: true });
+      await run("node", [backupScript], { stream: true, silent: true });
       log("repository backup completed");
     } catch (error) {
       log("repository backup failed", error.message);

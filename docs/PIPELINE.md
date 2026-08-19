@@ -295,7 +295,9 @@ explicitly enables cache removal.
 
 Conductor output is intentionally human-readable and concise. The machine
 result is retained in the canonical state and provenance records rather than
-dumped into the systemd journal.
+dumped into the systemd journal. Periodic ten-second status reports are off by
+default; the deployed service enables them with `CONDUCTOR_STATUS_REPORTS=1`
+while runs are being observed manually.
 
 The daily timer invokes the same service wrapper as a manual service start:
 

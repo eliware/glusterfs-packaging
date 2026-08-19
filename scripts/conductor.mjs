@@ -42,7 +42,6 @@ import {
   packageSmoke2Complete,
 } from "./package-validation.mjs";
 import { runPackageSmoke2 } from "./package-lane.mjs";
-import { reconcilePendingImagePublication } from "./local-image-result.mjs";
 import {
   compareStatusReports,
   createStatusDocument,
@@ -167,33 +166,6 @@ await writeFile(
   stringifyJson({ pid: process.pid, started: isoTimestamp() }),
 );
 try {
-  const reconcilePendingImages = async () => {
-    const pendingFiles = [];
-    const visit = async (directory) => {
-      let entries;
-      try {
-        entries = await readdir(directory, { withFileTypes: true });
-      } catch {
-        return;
-      }
-      for (const entry of entries) {
-        const file = path.join(directory, entry.name);
-        if (entry.isDirectory()) await visit(file);
-        else if (entry.isFile() && entry.name.endsWith(".json.pending"))
-          pendingFiles.push(file);
-      }
-    };
-    await visit(workspaceRoot);
-    for (const file of pendingFiles) {
-      try {
-        const result = await reconcilePendingImagePublication(file, run);
-        log("reconciled image publication", `${result.image} ${result.digest}`);
-      } catch (error) {
-        log("pending image publication retained", `${file}: ${error.message}`);
-      }
-    }
-  };
-  if (!dryRun) await reconcilePendingImages();
   const runId = `${compactTimestamp()}-${crypto.randomUUID().slice(0, 8)}`;
   statusDirectory = path.join(stateRoot, "status", runId);
   await mkdir(statusDirectory, { recursive: true });
@@ -534,34 +506,6 @@ try {
       publishedPackageRoot(lane),
       lane.format === "rpm" ? "repodata/repomd.xml" : "dists/stable/Release",
     );
-  const packageRecordFromCheckpoint = (lane, packageCheckpoint) => {
-    const build = packageCheckpoint.build || {};
-    const candidate = `${lane.id}-${lane.version}`;
-    return {
-      kind: "package",
-      run_id: build.run_id || runId,
-      lane: lane.id,
-      channel: lane.channel,
-      version: lane.version,
-      package_version: lane.packageVersion,
-      candidate,
-      candidate_id: `${lane.id}-${lane.version}`,
-      repository: packageRepositoryUrl(
-        lane,
-        lane.channel === "preview" ? candidate : "stable",
-      ),
-      provenance: `${packageRepositoryUrl(lane, lane.channel === "preview" ? candidate : "stable")}provenance.json`,
-      source: { ref: lane.sourceRef, commit: lane.sourceCommit },
-      packaging_commit: build.packaging_commit || "unknown",
-      workflow: build.workflow || lane.workflow,
-      workflow_run_id: build.run_id || null,
-      workflow_url: build.run_id
-        ? `https://github.com/eliware/glusterfs-packaging/actions/runs/${build.run_id}`
-        : null,
-      validation:
-        packageCheckpoint.validation || packageCheckpoint.smoke || null,
-    };
-  };
   const publishedPackage = async (lane, checkpoint) => {
     const checkpointPackage =
       checkpoint?.package && packageInputsMatch(checkpoint.package, lane)
@@ -621,46 +565,6 @@ try {
       repository: `/${relativeRoot}/`,
       provenance: `/${relativeRoot}/provenance.json`,
     };
-    const repair = async () => {
-      let recordFile = provenance;
-      let recordDir;
-      try {
-        await exists(provenance);
-        if (!(await exists(provenance))) {
-          recordDir = await tempDir("gluster-package-record-");
-          recordFile = path.join(recordDir, "record.json");
-          await writeFile(
-            recordFile,
-            `${JSON.stringify(packageRecordFromCheckpoint(lane, candidate), null, 2)}\n`,
-          );
-        }
-        await runInteractive(
-          "node",
-          [
-            path.join(repoRoot, "scripts/write-package-provenance.mjs"),
-            "--output-dir",
-            path.dirname(provenance),
-            "--package-root",
-            path.dirname(provenance),
-            "--record-json",
-            recordFile,
-            "--format",
-            lane.format,
-          ],
-          { env: process.env },
-        );
-        await run(
-          "node",
-          [
-            path.join(repoRoot, "scripts/verify-provenance.mjs"),
-            path.dirname(provenance),
-          ],
-          { capture: true },
-        );
-      } finally {
-        if (recordDir) await rm(recordDir, { recursive: true, force: true });
-      }
-    };
     try {
       await run(
         "node",
@@ -671,16 +575,8 @@ try {
         { capture: true },
       );
     } catch (error) {
-      log(`${lane.id}: repairing package provenance`, error.message);
-      try {
-        await repair();
-      } catch (repairError) {
-        log(
-          `${lane.id}: package provenance repair failed`,
-          repairError.message,
-        );
-        return null;
-      }
+      log(`${lane.id}: package provenance invalid`, error.message);
+      return null;
     }
     return candidate;
   };

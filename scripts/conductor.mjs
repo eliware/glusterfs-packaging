@@ -89,6 +89,7 @@ const {
 } = createConductorConfig({ cliArgs, cliNoRebuild, cliSkipPublication });
 let statusDirectory = "";
 let statusReporter;
+let completedNoOp = false;
 const log = (message, details = "") => {
   const suffix = details ? ` ${details}` : "";
   console.log(`[conductor] ${message}${suffix}`);
@@ -105,6 +106,14 @@ const upstreamBackoffMs = Number(env("CONDUCTOR_UPSTREAM_BACKOFF_MS", "3000"));
 const sleep = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 const withLocalStageLock = createLocalStageLock({ stateRoot, log });
+class NoOpRun extends Error {
+  constructor(runId, inputs, results) {
+    super("no upstream or build inputs changed");
+    this.runId = runId;
+    this.inputs = inputs;
+    this.results = results;
+  }
+}
 const retryUpstream = async (label, operation) => {
   let lastError;
   for (let attempt = 1; attempt <= upstreamAttempts; attempt += 1) {
@@ -1454,6 +1463,7 @@ try {
       images: checkpoint.images || {},
       package: checkpoint.package,
       image_results: images,
+      changed: Boolean(candidate || images.length),
     };
   };
   const dispatch = async (workflow, artifact, fields) => {
@@ -1504,6 +1514,13 @@ try {
     return output;
   };
   const results = await Promise.allSettled(lanes.map(runLane));
+  if (
+    !dryRun &&
+    results.every(
+      (result) => result.status === "fulfilled" && !result.value.changed,
+    )
+  )
+    throw new NoOpRun(runId, inputs, results);
   const checkpoints = { ...previous.checkpoints };
   for (let i = 0; i < results.length; i += 1) {
     const result = results[i];
@@ -1758,7 +1775,24 @@ try {
     ),
   );
 } catch (error) {
-  if (
+  if (error instanceof NoOpRun) {
+    completedNoOp = true;
+    log("no-op run completed", "all package and image checkpoints were current");
+    await notifyConductor({
+      title: "Conductor no-op completed",
+      description: "No upstream or build inputs changed; no artifacts were rebuilt.",
+      status: "success",
+      fields: [{ name: "Run", value: error.runId }],
+    });
+    console.log(
+      JSON.stringify(
+        { run_id: error.runId, inputs: error.inputs, no_op: true },
+        null,
+        2,
+      ),
+    );
+    process.exitCode = 0;
+  } else if (
     error instanceof DockerHubRateLimitError ||
     error instanceof GitHubRateLimitError
   ) {
@@ -1783,7 +1817,7 @@ try {
   if (statusReporter) clearInterval(statusReporter);
   if (statusDirectory)
     await rm(statusDirectory, { recursive: true, force: true });
-  if (backupScript && !dryRun) {
+  if (backupScript && !dryRun && !completedNoOp) {
     try {
       log("running repository backup");
       await run("node", [backupScript], { stream: true });

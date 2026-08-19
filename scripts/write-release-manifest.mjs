@@ -74,13 +74,14 @@ await runInteractive(
   [
     "--batch",
     "--yes",
+    "--no-tty",
     "--armor",
     "--detach-sign",
     "--local-user",
     key,
     ...(passphrase
       ? ["--pinentry-mode", "loopback", "--passphrase-file", passphrase]
-      : []),
+      : ["--pinentry-mode", "loopback"]),
     "--output",
     `${manifestFile}.asc`,
     manifestFile,

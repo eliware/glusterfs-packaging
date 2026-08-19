@@ -12,8 +12,10 @@ const passphrase = env(
   env("RPM_SIGNING_PASSPHRASE_FILE", ""),
 );
 const extra = passphrase
-  ? ["--pinentry-mode", "loopback", "--passphrase-file", passphrase]
-  : [];
+  ? ["--no-tty", "--pinentry-mode", "loopback", "--passphrase-file", passphrase]
+  : ["--no-tty", "--pinentry-mode", "loopback"];
+const signingEnv = { ...process.env };
+delete signingEnv.GPG_TTY;
 
 async function sign(directory) {
   const release = path.join(directory, "dists/stable/Release");
@@ -28,7 +30,7 @@ async function sign(directory) {
     "--output",
     path.join(directory, "dists/stable/InRelease"),
     release,
-  ]);
+  ], { env: signingEnv });
   await run("gpg", [
     "--batch",
     "--yes",
@@ -40,7 +42,7 @@ async function sign(directory) {
     "--output",
     path.join(directory, "dists/stable/Release.gpg"),
     release,
-  ]);
+  ], { env: signingEnv });
 }
 
 for (const distribution of await readdir(root)) {

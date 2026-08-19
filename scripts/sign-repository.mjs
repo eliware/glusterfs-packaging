@@ -22,7 +22,7 @@ for (const file of rpmFiles) {
   const args = ["--addsign", "--key-id", key];
   args.unshift(
     "--define",
-    `_gpg_sign_cmd_extra_args --batch --pinentry-mode loopback${passphrase ? ` --passphrase-file ${passphrase}` : ""}`,
+    `_gpg_sign_cmd_extra_args --batch --no-tty --pinentry-mode loopback${passphrase ? ` --passphrase-file ${passphrase}` : ""}`,
   );
   await runInteractive("rpmsign", args.concat(path.join(versionDir, file)), {
     env: signingEnv,
@@ -54,6 +54,7 @@ for (const directory of [versionDir]) {
       "gpg",
       [
         "--batch",
+        "--no-tty",
         "--yes",
         "--pinentry-mode",
         "loopback",

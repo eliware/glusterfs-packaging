@@ -78,8 +78,10 @@ if (key) {
     env("RPM_SIGNING_PASSPHRASE_FILE", ""),
   );
   const extra = passphrase
-    ? ["--pinentry-mode", "loopback", "--passphrase-file", passphrase]
-    : [];
+    ? ["--no-tty", "--pinentry-mode", "loopback", "--passphrase-file", passphrase]
+    : ["--no-tty", "--pinentry-mode", "loopback"];
+  const signingEnv = { ...process.env };
+  delete signingEnv.GPG_TTY;
   await run("gpg", [
     "--batch",
     "--yes",
@@ -90,7 +92,7 @@ if (key) {
     "--output",
     path.join(repository, "dists", suite, "InRelease"),
     releaseFile,
-  ]);
+  ], { env: signingEnv });
   await run("gpg", [
     "--batch",
     "--yes",
@@ -102,6 +104,6 @@ if (key) {
     "--output",
     path.join(repository, "dists", suite, "Release.gpg"),
     releaseFile,
-  ]);
+  ], { env: signingEnv });
 }
 console.log("APT repository generated: " + repository);

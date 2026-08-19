@@ -6,7 +6,6 @@ import {
   readFile,
   writeFile,
   rm,
-  rename,
   readdir,
 } from "node:fs/promises";
 import {
@@ -60,6 +59,7 @@ import { dockerAuthFile } from "./docker-hub-auth.mjs";
 import { isImageCheckpointValid } from "./image-checkpoint.mjs";
 import { publicationFile } from "./publication-paths.mjs";
 import { validatePublishedArtifacts } from "./conductor-final-validation.mjs";
+import { createLaneImageRecorder } from "./conductor-lane.mjs";
 
 const {
   cliArgs,
@@ -818,123 +818,17 @@ try {
       }
     }
     let images = [];
-    const recordImage = async (
-      imageResult,
-      distribution,
-      provenanceUrl,
-      imageBaseKey,
-      packageProvenanceUrl,
-    ) => {
-      if (!imageResult?.image || !imageResult?.digest)
-        throw new Error(
-          `image workflow returned no immutable digest for ${distribution}`,
-        );
-      const active = JSON.parse(
-        await readFile(
-          path.join(
-            env("PUBLISH_ROOT", "/var/lib/gluster-packaging/repository"),
-            "metadata/active-generation.json",
-          ),
-          "utf8",
-        ),
-      );
-      const publicationRoot = env(
-        "PUBLISH_ROOT",
-        "/var/lib/gluster-packaging/repository",
-      );
-      const output = path.join(
-        publicationRoot,
-        "metadata",
-        `catalog.json.${runId}-${lane.id}-${distribution}.next`,
-      );
-      const containerValidationDir = await tempDir(
-        "gluster-container-validation-",
-      );
-      const containerValidationFile = path.join(
-        containerValidationDir,
-        "container-validation.json",
-      );
-      await writeFile(
-        containerValidationFile,
-        `${JSON.stringify(imageResult.container_validation, null, 2)}\n`,
-      );
-      try {
-        await enqueuePublication(`${lane.id}/${distribution}`, async () => {
-          await runInteractive(
-            "node",
-            [
-              path.join(repoRoot, "scripts/write-catalog.mjs"),
-              "--output",
-              output,
-              "--publish-root",
-              publicationRoot,
-              "--channel",
-              lane.channel,
-              "--version",
-              lane.version,
-              "--built",
-              new Date().toISOString(),
-              "--image",
-              imageResult.image,
-              "--digest",
-              imageResult.digest,
-              "--candidate",
-              `${lane.id}-${lane.version}`,
-              "--package-candidate",
-              `${lane.id}-${lane.version}`,
-              "--generation",
-              active.generation,
-              "--source-ref",
-              lane.sourceRef,
-              "--source-commit",
-              lane.sourceCommit,
-              "--validation-file",
-              validationFile,
-              "--container-validation-file",
-              containerValidationFile,
-              "--distribution",
-              distribution,
-              "--provenance",
-              provenanceUrl,
-              "--package-provenance",
-              packageProvenanceUrl,
-              "--base-image-digest",
-              imageResult.base_image_digest ||
-                baseImages[imageBaseKey].split("@").at(-1),
-              "--base-image",
-              imageResult.base_image || baseImages[imageBaseKey],
-            ],
-            { env: process.env, silent: true },
-          );
-          await rename(
-            output,
-            path.join(publicationRoot, "metadata/catalog.json"),
-          );
-          await runInteractive(
-            "node",
-            [
-              path.join(repoRoot, "scripts/generate-repository-index.mjs"),
-              "--root",
-              publicationRoot,
-            ],
-            { silent: true },
-          );
-          await runInteractive(
-            "node",
-            [
-              path.join(repoRoot, "scripts/write-release-manifest.mjs"),
-              "--root",
-              publicationRoot,
-              "--generation",
-              active.generation,
-            ],
-            { silent: true },
-          );
-        });
-      } finally {
-        await rm(containerValidationDir, { recursive: true, force: true });
-      }
-    };
+    const recordImage = createLaneImageRecorder({
+      baseImages,
+      enqueuePublication,
+      lane,
+      pathRoot: env("PUBLISH_ROOT", "/var/lib/gluster-packaging/repository"),
+      repoRoot,
+      runId,
+      runInteractive,
+      tempDir,
+      validationFile,
+    });
     if (candidate && !dryRun && !skipPublication) {
       await enqueuePublication(lane.id, async () => {
         await runInteractive(
@@ -1587,10 +1481,39 @@ try {
   let report = null;
   if (!dryRun) {
     try {
+      const publicationRoot = env(
+        "PUBLISH_ROOT",
+        "/var/lib/gluster-packaging/repository",
+      );
       report = await generateReleaseReport({
         runId,
         results: next.runs.at(-1).results,
+        outputRoot: publicationRoot,
       });
+      const reportFiles = [
+        path.join(
+          publicationRoot,
+          "metadata",
+          "runs",
+          runId,
+          "release-card.png",
+        ),
+        path.join(
+          publicationRoot,
+          "metadata",
+          "runs",
+          runId,
+          "release-report.json",
+        ),
+      ];
+      if (
+        !(await Promise.all(reportFiles.map((file) => exists(file)))).every(
+          Boolean,
+        )
+      )
+        throw new Error(
+          "release report artifacts were not written to the publication root",
+        );
       log("release report published", report.cardUrl);
     } catch (error) {
       log("release report failed", error.message);

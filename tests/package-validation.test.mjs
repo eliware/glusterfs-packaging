@@ -5,6 +5,7 @@ import {
   packageSmoke2Complete,
   packageSmoke2Targets,
   packageCheckpointInputsMatch,
+  packageCandidateForPublication,
 } from "../scripts/package-validation.mjs";
 
 const passed = (id) => ({
@@ -63,6 +64,20 @@ test("package checkpoint reuse requires an identified, provenance-linked candida
       lane,
     ),
   ).toBe(false);
+});
+
+test("publication keeps the reused Debian or Ubuntu candidate path", () => {
+  const lane = { id: "ubuntu-rolling", version: "2026.08.19-abc123" };
+  expect(
+    packageCandidateForPublication(lane, {
+      candidate_id: "ubuntu-rolling-2026.08.18-def456",
+    }),
+  ).toBe("ubuntu-rolling-2026.08.18-def456");
+  expect(
+    packageCandidateForPublication(lane, null, {
+      candidate_id: "ubuntu-rolling-2026.08.19-abc123",
+    }),
+  ).toBe("ubuntu-rolling-2026.08.19-abc123");
 });
 
 test("merged validation records smoke stages and target results", () => {

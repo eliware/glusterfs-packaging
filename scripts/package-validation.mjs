@@ -16,6 +16,14 @@ export function packageCheckpointInputsMatch(checkpoint, lane) {
   );
 }
 
+export function packageCandidateForPublication(lane, packageCheckpoint, packageRecord) {
+  return (
+    packageCheckpoint?.candidate_id ||
+    packageRecord?.candidate_id ||
+    `${lane.id}-${lane.version}`
+  );
+}
+
 export function packageSmoke2Complete(checkpoint, lane) {
   const records = checkpoint?.smoke2 || [];
   const required = packageSmoke2Targets(lane);

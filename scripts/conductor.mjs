@@ -37,6 +37,7 @@ import {
 import { checkGitHubRateLimit, GitHubRateLimitError } from "./github-quota.mjs";
 import {
   mergePackageValidation,
+  packageCandidateForPublication,
   packageCheckpointInputsMatch,
   packageSmoke2Complete,
 } from "./package-validation.mjs";
@@ -1123,7 +1124,11 @@ try {
         );
       const packageProvenance = `${packageRepository}provenance.json`;
       const packageProvenanceUrl = `${repositoryBase}${packageProvenance}`;
-      const publishedCandidate = `${lane.id}-${lane.version}`;
+      const publishedCandidate = packageCandidateForPublication(
+        lane,
+        packageCheckpoint,
+        packageRecord,
+      );
       const rpmRepoUrl = `${repositoryBase}${packageRepository}`;
       const debRepository = () => `${repositoryBase}${packageRepository}`;
       let publishedRpmMetadataSha256;

@@ -452,13 +452,17 @@ try {
     distribution,
     baseKey,
     provenanceExists,
+    packageCandidate,
   }) =>
     isImageCheckpointValid({
       checkpoint,
       lane,
       distribution,
       baseImage: baseImages[baseKey],
-      packageCandidate: `${lane.id}-${lane.version}`,
+      packageCandidate:
+        packageCandidate ||
+        checkpoint?.package_candidate ||
+        `${lane.id}-${lane.version}`,
       provenanceExists,
       force,
     });
@@ -1165,6 +1169,10 @@ try {
             lane,
             distribution,
             baseKey,
+            packageCandidate:
+              checkpoint.package?.candidate_id ||
+              checkpoint.package_candidate ||
+              `${lane.id}-${lane.version}`,
             provenanceExists: imageProvenanceExists,
           })
         ) {

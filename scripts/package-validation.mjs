@@ -4,6 +4,18 @@ export function packageSmoke2Targets(lane) {
     : [lane.distribution === "debian" ? "debian-bookworm" : "ubuntu-noble"];
 }
 
+export function packageCheckpointInputsMatch(checkpoint, lane) {
+  return (
+    checkpoint?.status === "published" &&
+    checkpoint.source_commit === lane.sourceCommit &&
+    typeof checkpoint.candidate_id === "string" &&
+    checkpoint.candidate_id.length > 0 &&
+    typeof checkpoint.provenance === "string" &&
+    checkpoint.provenance.length > 0 &&
+    packageSmoke2Complete(checkpoint, lane)
+  );
+}
+
 export function packageSmoke2Complete(checkpoint, lane) {
   const records = checkpoint?.smoke2 || [];
   const required = packageSmoke2Targets(lane);

@@ -37,6 +37,7 @@ import {
 import { checkGitHubRateLimit, GitHubRateLimitError } from "./github-quota.mjs";
 import {
   mergePackageValidation,
+  packageCheckpointInputsMatch,
   packageSmoke2Complete,
 } from "./package-validation.mjs";
 import { runPackageSmoke2 } from "./package-lane.mjs";
@@ -442,10 +443,7 @@ try {
   log("lane selection", selectedLaneIds.join(","));
   const baseDigest = (lane) => baseImages[lane.baseKey];
   const packageInputsMatch = (checkpoint, lane) =>
-    !force &&
-    checkpoint?.status === "published" &&
-    checkpoint.source_commit === lane.sourceCommit &&
-    packageSmoke2Complete(checkpoint, lane);
+    !force && packageCheckpointInputsMatch(checkpoint, lane);
   const imageInputsMatch = ({
     checkpoint,
     lane,
@@ -570,7 +568,11 @@ try {
       try {
         const document = JSON.parse(await readFile(provenance, "utf8"));
         const record = document.record || document;
-        return record.source?.commit === lane.sourceCommit;
+        return (
+          record.candidate_id === checkpointPackage.candidate_id &&
+          record.candidate === checkpointPackage.candidate_id &&
+          record.source?.commit === lane.sourceCommit
+        );
       } catch {
         return false;
       }

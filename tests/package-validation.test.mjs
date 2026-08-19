@@ -4,6 +4,7 @@ import {
   packageSmoke2Passed,
   packageSmoke2Complete,
   packageSmoke2Targets,
+  packageCheckpointInputsMatch,
 } from "../scripts/package-validation.mjs";
 
 const passed = (id) => ({
@@ -37,6 +38,30 @@ test("DEB smoke-2 is independent per target OS", () => {
   ).toBe(true);
   expect(
     packageSmoke2Complete({ smoke2: [passed("debian-bookworm")] }, lane),
+  ).toBe(false);
+});
+
+test("package checkpoint reuse requires an identified, provenance-linked candidate", () => {
+  const lane = { format: "deb", distribution: "debian", sourceCommit: "abc123" };
+  const checkpoint = {
+    status: "published",
+    source_commit: "abc123",
+    candidate_id: "debian-stable-11.2",
+    provenance: "/debian/bookworm/stable/provenance.json",
+    smoke2: [passed("debian-bookworm")],
+  };
+  expect(packageCheckpointInputsMatch(checkpoint, lane)).toBe(true);
+  expect(
+    packageCheckpointInputsMatch(
+      { ...checkpoint, candidate_id: undefined },
+      lane,
+    ),
+  ).toBe(false);
+  expect(
+    packageCheckpointInputsMatch(
+      { ...checkpoint, provenance: undefined },
+      lane,
+    ),
   ).toBe(false);
 });
 

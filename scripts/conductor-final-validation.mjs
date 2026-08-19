@@ -50,7 +50,8 @@ export async function validatePublishedArtifacts({
       continue;
     }
     const value = outcome.value;
-    const packageRoot = publishedPackageRoot(lane);
+    const packageRoot =
+      value.package?.published_root || publishedPackageRoot(lane);
     const packageMetadata = path.join(
       packageRoot,
       lane.format === "rpm" ? "repodata/repomd.xml" : "dists/stable/Release",

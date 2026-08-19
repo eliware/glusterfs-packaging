@@ -1586,17 +1586,6 @@ try {
       process.exitCode = 1;
     }
   }
-  if (!dryRun && !skipPublication) {
-    try {
-      await validateFinalPublication();
-    } catch (error) {
-      log("final publication validation failed", error.message);
-      await notifyFailure("Final publication validation failed", error, [
-        { name: "Run", value: runId },
-      ]);
-      process.exitCode = 1;
-    }
-  }
   const reconcileCatalog = async () => {
     const publicationRoot = env(
       "PUBLISH_ROOT",
@@ -1692,6 +1681,17 @@ try {
     } catch (error) {
       log("catalog reconciliation failed", error.message);
       await notifyFailure("Catalog reconciliation failed", error, [
+        { name: "Run", value: runId },
+      ]);
+      process.exitCode = 1;
+    }
+  }
+  if (!dryRun && !skipPublication) {
+    try {
+      await validateFinalPublication();
+    } catch (error) {
+      log("final publication validation failed", error.message);
+      await notifyFailure("Final publication validation failed", error, [
         { name: "Run", value: runId },
       ]);
       process.exitCode = 1;

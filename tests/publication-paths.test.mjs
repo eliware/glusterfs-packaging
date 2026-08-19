@@ -32,3 +32,12 @@ test("rejects path traversal", () => {
     "invalid publication path",
   );
 });
+
+test("rejects missing and empty publication references", () => {
+  expect(() => publicationRelativePath()).toThrow(
+    "publication path is required",
+  );
+  expect(() => publicationRelativePath("/")).toThrow(
+    "invalid publication path",
+  );
+});

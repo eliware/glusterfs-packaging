@@ -37,7 +37,8 @@
             "**/?(*.)+(spec|test).[jt]s?(x)",
             "**/?(*.)+(spec|test).mjs",
             "**/?(*.)+(spec|test).cjs"
-        ]
+        ],
+        "setupFiles": ["<rootDir>/tests/setup.mjs"]
     },
     "engines": {
         "node": ">=20"

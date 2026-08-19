@@ -40,10 +40,18 @@ test("DEB smoke-2 is independent per target OS", () => {
   expect(
     packageSmoke2Complete({ smoke2: [passed("debian-bookworm")] }, lane),
   ).toBe(false);
+  expect(
+    packageSmoke2Targets({ format: "deb", distribution: "debian" }),
+  ).toEqual(["debian-bookworm"]);
+  expect(packageSmoke2Complete({}, lane)).toBe(false);
 });
 
 test("package checkpoint reuse requires an identified, provenance-linked candidate", () => {
-  const lane = { format: "deb", distribution: "debian", sourceCommit: "abc123" };
+  const lane = {
+    format: "deb",
+    distribution: "debian",
+    sourceCommit: "abc123",
+  };
   const checkpoint = {
     status: "published",
     source_commit: "abc123",
@@ -78,6 +86,9 @@ test("publication keeps the reused Debian or Ubuntu candidate path", () => {
       candidate_id: "ubuntu-rolling-2026.08.19-abc123",
     }),
   ).toBe("ubuntu-rolling-2026.08.19-abc123");
+  expect(packageCandidateForPublication(lane, null, null)).toBe(
+    "ubuntu-rolling-2026.08.19-abc123",
+  );
 });
 
 test("merged validation records smoke stages and target results", () => {
@@ -99,6 +110,9 @@ test("merged validation records smoke stages and target results", () => {
     "rocky-10",
     "almalinux-10",
   ]);
+  expect(
+    mergePackageValidation({}, [{ validation: {} }]).distributions,
+  ).toEqual([]);
 });
 
 test("smoke-2 records can resume with only incomplete targets", () => {
@@ -115,4 +129,12 @@ test("smoke-2 records can resume with only incomplete targets", () => {
       ({ target_os }) => target_os,
     ),
   ).toEqual(["centos-stream-10", "rocky-10"]);
+  expect(packageSmoke2Passed(null, "centos-stream-10")).toBe(false);
+  expect(mergePackageSmoke2Records(lane, [{ validation: {} }])).toEqual([]);
+  expect(
+    packageSmoke2Complete(
+      { smoke2: [{ target_os: "centos-stream-10", validation: {} }] },
+      lane,
+    ),
+  ).toBe(false);
 });

@@ -64,6 +64,14 @@ checkpoint decisions, local Docker Smoke-2 and image tests, package signing,
 repository publication, local GHCR publication, provenance, catalogs, backups,
 and notifications.
 
+Before any build starts, the conductor authenticates to Docker Hub and requires
+both quota headers plus a safety floor of 24 remaining pulls. Missing headers,
+network failures, and Docker Hub 5xx responses are retried four times with
+backoff; a low or exhausted quota defers the run without starting work. The
+defaults can be tuned outside the repository with
+`CONDUCTOR_DOCKERHUB_MIN_REMAINING`, `CONDUCTOR_DOCKERHUB_ATTEMPTS`, and
+`CONDUCTOR_DOCKERHUB_BACKOFF_MS`.
+
 The canonical conductor checkpoint state is published at
 `metadata/conductor-state.json` under the configured publication root. The
 local state directory is used only for the global lock, transient status files,
@@ -88,6 +96,7 @@ areas:
 | Catalog and repository indexes                          | `catalog-repositories.mjs`, `write-catalog.mjs`, `rebuild-catalog.mjs`, `generate-repository-index.mjs`                    |
 | Release reports and notifications                       | `release-report.mjs`, `discord-notifier.mjs`                                                                               |
 | External workflow and quota access                      | `dispatch-workflow.mjs`, `github-quota.mjs`, `docker-hub-quota.mjs`, `docker-hub-auth.mjs`                                 |
+| Docker Hub preflight retries and safety floor           | `docker-hub-preflight.mjs`                                                                                                 |
 | Metadata serialization and validation                   | `metadata-io.mjs`, `metadata-version.mjs`, `serialization.mjs`, `validation-schema.mjs`                                    |
 
 `conductor.mjs` sequences these modules and remains responsible for the
@@ -283,6 +292,10 @@ report, and matching conductor state in one generation. Temporary candidates
 and logs are removed only after the related provenance and publication work is
 complete. Persistent ccache directories are retained unless the reset command
 explicitly enables cache removal.
+
+Conductor output is intentionally human-readable and concise. The machine
+result is retained in the canonical state and provenance records rather than
+dumped into the systemd journal.
 
 The daily timer invokes the same service wrapper as a manual service start:
 

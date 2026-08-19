@@ -30,10 +30,11 @@ import {
 import { notifyConductor } from "./discord-notifier.mjs";
 import { generateReleaseReport } from "./release-report.mjs";
 import {
-  checkDockerHubRateLimit,
   DockerHubRateLimitError,
+  DockerHubUnavailableError,
   isDockerHubReference,
 } from "./docker-hub-quota.mjs";
+import { checkDockerHubPreflight } from "./docker-hub-preflight.mjs";
 import { checkGitHubRateLimit, GitHubRateLimitError } from "./github-quota.mjs";
 import {
   mergePackageValidation,
@@ -338,15 +339,14 @@ try {
       }),
     ),
   );
-  const dockerHubQuota = await checkDockerHubRateLimit(
+  const dockerHubQuota = await checkDockerHubPreflight(
     Object.values(baseImages),
+    log,
   );
   if (dockerHubQuota.checked)
     log(
       "Docker Hub quota",
-      dockerHubQuota.remaining === null || dockerHubQuota.limit === null
-        ? "quota headers unavailable"
-        : `${dockerHubQuota.remaining}/${dockerHubQuota.limit} remaining`,
+      `${dockerHubQuota.remaining}/${dockerHubQuota.limit} remaining`,
     );
   const resolveBase = async (name, reference) => {
     if (/@sha256:[0-9a-f]{64}$/.test(reference)) return reference;
@@ -1665,30 +1665,25 @@ try {
       ],
       report,
     });
-  console.log(
-    JSON.stringify(
-      { run_id: runId, inputs, results: next.runs.at(-1).results },
-      null,
-      2,
-    ),
+  log(
+    "run result",
+    `run=${runId} lanes=${results.filter((result) => result.status === "fulfilled").length}/${results.length}`,
   );
 } catch (error) {
   if (error instanceof NoOpRun) {
     completedNoOp = true;
-    log("no-op run completed", "all package and image checkpoints were current");
+    log(
+      "no-op run completed",
+      "all package and image checkpoints were current",
+    );
     await notifyConductor({
       title: "Conductor no-op completed",
-      description: "No upstream or build inputs changed; no artifacts were rebuilt.",
+      description:
+        "No upstream or build inputs changed; no artifacts were rebuilt.",
       status: "success",
       fields: [{ name: "Run", value: error.runId }],
     });
-    console.log(
-      JSON.stringify(
-        { run_id: error.runId, inputs: error.inputs, no_op: true },
-        null,
-        2,
-      ),
-    );
+    log("run result", `run=${error.runId} no-op=true`);
     process.exitCode = 0;
   } else if (
     error instanceof DockerHubRateLimitError ||
@@ -1708,6 +1703,10 @@ try {
       ],
     });
     process.exitCode = 0;
+  } else if (error instanceof DockerHubUnavailableError) {
+    log("Docker Hub preflight failed", error.message);
+    await notifyFailure("Docker Hub preflight failed", error);
+    process.exitCode = 1;
   } else {
     throw error;
   }

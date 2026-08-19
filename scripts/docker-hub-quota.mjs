@@ -17,6 +17,15 @@ export class DockerHubRateLimitError extends Error {
   }
 }
 
+export class DockerHubUnavailableError extends Error {
+  constructor(message, retryAfterSeconds = 30) {
+    super(message);
+    this.name = "DockerHubUnavailableError";
+    this.code = "DOCKER_HUB_UNAVAILABLE";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 export function isDockerHubReference(reference) {
   const value = String(reference).split("@")[0].split(":")[0];
   return (
@@ -47,7 +56,7 @@ function quotaNumber(value) {
 export async function checkDockerHubRateLimit(
   references,
   fetchImpl = globalThis.fetch,
-  { credentials = null } = {},
+  { credentials = null, minimumRemaining = 24 } = {},
 ) {
   if (
     !references.some(
@@ -62,32 +71,58 @@ export async function checkDockerHubRateLimit(
     throw new Error(
       "Docker Hub authentication is required; run docker login or set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN",
     );
-  const tokenResponse = await fetchImpl(DOCKER_AUTH_URL, {
-    headers: { Authorization: dockerHubBasicAuthorization(credentials) },
-  });
+  let tokenResponse;
+  try {
+    tokenResponse = await fetchImpl(DOCKER_AUTH_URL, {
+      headers: { Authorization: dockerHubBasicAuthorization(credentials) },
+    });
+  } catch (error) {
+    throw new DockerHubUnavailableError(
+      `Docker Hub token request failed: ${error.message}`,
+    );
+  }
   if (!tokenResponse.ok)
-    throw new Error(
+    throw new DockerHubUnavailableError(
       `Docker Hub quota token request returned HTTP ${tokenResponse.status}`,
+      tokenResponse.status >= 500 ? 30 : 3600,
     );
   const token = (await tokenResponse.json()).token;
-  const response = await fetchImpl(DOCKER_MANIFEST_URL, {
-    method: "HEAD",
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  let response;
+  try {
+    response = await fetchImpl(DOCKER_MANIFEST_URL, {
+      method: "HEAD",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    throw new DockerHubUnavailableError(
+      `Docker Hub quota request failed: ${error.message}`,
+    );
+  }
+  if (response.status === 429)
+    throw new DockerHubRateLimitError(
+      "Docker Hub rate limit exhausted",
+      quotaNumber(header(response, "retry-after")) || 3600,
+    );
+  if (!response.ok)
+    throw new DockerHubUnavailableError(
+      `Docker Hub quota request returned HTTP ${response.status}`,
+      response.status >= 500 ? 30 : 3600,
+    );
   const limitHeader = header(response, "ratelimit-limit");
   const remainingHeader = header(response, "ratelimit-remaining");
   const limit = quotaNumber(limitHeader);
   const remaining = quotaNumber(remainingHeader);
   const retryAfter = quotaNumber(header(response, "retry-after"));
-  if (
-    response.status === 429 ||
-    (remaining !== null && remaining <= 0)
-  ) {
+  if (limit === null || remaining === null)
+    throw new DockerHubUnavailableError(
+      "Docker Hub quota response omitted rate-limit headers",
+    );
+  if (remaining <= 0 || remaining < minimumRemaining) {
     const wait = Number.isInteger(retryAfter)
       ? retryAfter
       : windowSeconds(limitHeader);
     throw new DockerHubRateLimitError(
-      `Docker Hub rate limit exhausted (${limit ?? "unknown limit"}; ${remaining ?? 0} remaining)`,
+      `Docker Hub quota too low (${limit}; ${remaining} remaining; minimum ${minimumRemaining})`,
       wait,
     );
   }

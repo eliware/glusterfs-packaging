@@ -1,5 +1,6 @@
 import {
   checkDockerHubRateLimit,
+  DockerHubUnavailableError,
   isDockerHubReference,
 } from "../scripts/docker-hub-quota.mjs";
 import { jest } from "@jest/globals";
@@ -57,7 +58,7 @@ test("returns quota when Docker Hub has capacity", async () => {
   });
 });
 
-test("does not report NaN when Docker Hub omits quota headers", async () => {
+test("rejects a Docker Hub response that omits quota headers", async () => {
   const fetchMock = jest
     .fn()
     .mockResolvedValueOnce(response(200, {}, { token: "test-token" }))
@@ -66,9 +67,23 @@ test("does not report NaN when Docker Hub omits quota headers", async () => {
     checkDockerHubRateLimit(["almalinux:10"], fetchMock, {
       credentials: { username: "test-user", password: "test-token" },
     }),
-  ).resolves.toMatchObject({
-    checked: true,
-    limit: null,
-    remaining: null,
-  });
+  ).rejects.toBeInstanceOf(DockerHubUnavailableError);
+});
+
+test("rejects quota below the configured safety floor", async () => {
+  const fetchMock = jest
+    .fn()
+    .mockResolvedValueOnce(response(200, {}, { token: "test-token" }))
+    .mockResolvedValueOnce(
+      response(200, {
+        "ratelimit-limit": "100;w=3600",
+        "ratelimit-remaining": "20;w=3600",
+      }),
+    );
+  await expect(
+    checkDockerHubRateLimit(["almalinux:10"], fetchMock, {
+      credentials: { username: "test-user", password: "test-token" },
+      minimumRemaining: 24,
+    }),
+  ).rejects.toMatchObject({ code: "DOCKER_HUB_RATE_LIMIT" });
 });

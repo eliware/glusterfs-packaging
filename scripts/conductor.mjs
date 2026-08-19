@@ -526,7 +526,6 @@ try {
         const record = document.record || document;
         return (
           record.candidate_id === checkpointPackage.candidate_id &&
-          record.candidate === checkpointPackage.candidate_id &&
           record.source?.commit === lane.sourceCommit
         );
       } catch {

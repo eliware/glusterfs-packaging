@@ -24,6 +24,13 @@ export function packageCandidateForPublication(lane, packageCheckpoint, packageR
   );
 }
 
+export function attachPublishedPackageCheckpoint(checkpoint, packageCheckpoint) {
+  return {
+    ...checkpoint,
+    package: packageCheckpoint,
+  };
+}
+
 export function packageSmoke2Complete(checkpoint, lane) {
   const records = checkpoint?.smoke2 || [];
   const required = packageSmoke2Targets(lane);

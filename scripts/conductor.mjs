@@ -36,6 +36,7 @@ import {
 import { checkDockerHubPreflight } from "./docker-hub-preflight.mjs";
 import { checkGitHubRateLimit, GitHubRateLimitError } from "./github-quota.mjs";
 import {
+  attachPublishedPackageCheckpoint,
   mergePackageValidation,
   packageCandidateForPublication,
   packageCheckpointInputsMatch,
@@ -668,6 +669,9 @@ try {
     let packageRecord;
     let smoke2 = [];
     if (packageCheckpoint) {
+      checkpoint = attachPublishedPackageCheckpoint(checkpoint, packageCheckpoint);
+      delete checkpoint.package_candidate;
+      await saveStageCheckpoint(lane, checkpoint);
       result = packageCheckpoint.build || {};
       smoke = packageCheckpoint.validation;
       smoke2 = packageCheckpoint.smoke2 || [];

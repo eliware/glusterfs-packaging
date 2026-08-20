@@ -1,4 +1,5 @@
 import {
+  attachPublishedPackageCheckpoint,
   mergePackageValidation,
   mergePackageSmoke2Records,
   packageSmoke2Passed,
@@ -7,6 +8,24 @@ import {
   packageCheckpointInputsMatch,
   packageCandidateForPublication,
 } from "../scripts/package-validation.mjs";
+
+test("attaches a reused published package record to the active checkpoint", () => {
+  const checkpoint = {
+    status: "published",
+    package_candidate: { status: "smoke2-passed" },
+  };
+  const packageRecord = {
+    status: "published",
+    candidate_id: "ubuntu-rolling-2026.08.19-commit",
+    published_root: "/repository/ubuntu/noble/amd64/previews/ubuntu-rolling-2026.08.19-commit",
+    provenance: "/metadata/runs/old/package/provenance.json",
+  };
+  expect(attachPublishedPackageCheckpoint(checkpoint, packageRecord)).toEqual({
+    status: "published",
+    package_candidate: { status: "smoke2-passed" },
+    package: packageRecord,
+  });
+});
 
 const passed = (id) => ({
   target_os: id,

@@ -63,3 +63,7 @@ Package builder workflows run their package lifecycle smoke test directly in
 their privileged runner after installing the generated packages. The local
 conductor runs package Smoke-2 and final image Smoke-3 locally, then publishes
 images directly to GHCR and writes the catalog and provenance records.
+- Do not over-engineer simple tasks.
+- Do not guess when confused.
+- Do not make random, pointless changes.
+- Check your own work before saying you're done.

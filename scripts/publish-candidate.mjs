@@ -115,6 +115,19 @@ async function copyProvenance(target) {
   );
 }
 
+async function removeMisplacedDebPreview() {
+  if (mode !== "preview" || packageFormat !== "deb") return;
+  const misplaced = releaseTarget(path.join("el10/x86_64/previews", candidate));
+  try {
+    const contents = await readdir(misplaced);
+    const allowed = new Set(["metadata.json"]);
+    if (contents.length && contents.every((name) => allowed.has(name)))
+      await rm(misplaced, { recursive: true, force: true });
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+
 async function writeGenerationRecord() {
   await mkdir(generationRoot, { recursive: true });
   await writeFile(
@@ -231,6 +244,7 @@ try {
   }
 
   if (mode === "preview") await removeExpiredPreviewGenerations();
+  await removeMisplacedDebPreview();
   if (!rpmOnly && !packageOnly) {
     const catalogNext = path.join(publishRoot, "metadata/catalog.json.next");
     await runInteractive("node", [

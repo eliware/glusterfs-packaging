@@ -17,7 +17,7 @@ export async function logPlannedImages({
     const imageProvenanceExists = imageProvenance
       ? await exists(
           publicationFile(
-            env("PUBLISH_ROOT", "/var/lib/gluster-packaging/repository"),
+            env("PUBLISH_ROOT", "/mnt/pvc/gluster-repository-http"),
             imageProvenance,
           ),
         )

@@ -143,7 +143,7 @@ function fieldValue(lines, empty = "No artifacts") {
 export async function generateReleaseReport({
   runId,
   results,
-  outputRoot = "/var/lib/gluster-packaging/repository",
+  outputRoot = "/mnt/pvc/gluster-repository-http",
   baseUrl = "https://glusterfs.eliware.org",
 }) {
   const directory = path.join(outputRoot, "metadata", "runs", runId);

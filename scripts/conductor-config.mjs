@@ -15,15 +15,15 @@ export function createConductorConfig({
 
   const stateRoot = env(
     "CONDUCTOR_STATE_ROOT",
-    "/var/lib/gluster-packaging/conductor",
+    "/mnt/pvc/gluster-build-workspaces/conductor",
   );
   const publicationRoot = env(
     "PUBLISH_ROOT",
-    "/var/lib/gluster-packaging/repository",
+    "/mnt/pvc/gluster-repository-http",
   );
   const workspaceRoot = env(
     "CONDUCTOR_WORKSPACE_ROOT",
-    "/var/lib/gluster-packaging/workspaces/conductor",
+    "/mnt/pvc/gluster-build-workspaces/conductor",
   );
   return {
     backupScript: env("CONDUCTOR_BACKUP_SCRIPT", ""),

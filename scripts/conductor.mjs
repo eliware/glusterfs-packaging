@@ -425,7 +425,7 @@ try {
     return checkpointWrite;
   };
   const publishedPackageRoot = (lane) => {
-    const root = env("PUBLISH_ROOT", "/var/lib/gluster-packaging/repository");
+    const root = env("PUBLISH_ROOT", "/mnt/pvc/gluster-repository-http");
     const candidate = `${lane.id}-${lane.version}`;
     if (lane.format === "rpm")
       return path.join(
@@ -455,7 +455,7 @@ try {
         ? checkpoint.package
         : null;
     if (!checkpointPackage) return null;
-    const root = env("PUBLISH_ROOT", "/var/lib/gluster-packaging/repository");
+    const root = env("PUBLISH_ROOT", "/mnt/pvc/gluster-repository-http");
     let packageRoot = publishedPackageRoot(lane);
     const metadataName =
       lane.format === "rpm" ? "repodata/repomd.xml" : "dists/stable/Release";
@@ -581,7 +581,7 @@ try {
   ) => {
     const publicationRoot = env(
       "PUBLISH_ROOT",
-      "/var/lib/gluster-packaging/repository",
+      "/mnt/pvc/gluster-repository-http",
     );
     const outputDir = path.join(
       publicationRoot,
@@ -826,7 +826,7 @@ try {
       baseImages,
       enqueuePublication,
       lane,
-      pathRoot: env("PUBLISH_ROOT", "/var/lib/gluster-packaging/repository"),
+      pathRoot: env("PUBLISH_ROOT", "/mnt/pvc/gluster-repository-http"),
       repoRoot,
       runId,
       runInteractive,
@@ -920,7 +920,7 @@ try {
         const imageProvenanceExists = imageProvenance
           ? await exists(
               publicationFile(
-                env("PUBLISH_ROOT", "/var/lib/gluster-packaging/repository"),
+                env("PUBLISH_ROOT", "/mnt/pvc/gluster-repository-http"),
                 imageProvenance,
               ),
             )
@@ -1317,7 +1317,7 @@ try {
       lanes,
       publicationRoot: env(
         "PUBLISH_ROOT",
-        "/var/lib/gluster-packaging/repository",
+        "/mnt/pvc/gluster-repository-http",
       ),
       publishedPackageRoot,
       log,
@@ -1325,7 +1325,7 @@ try {
   const rebuildPublishedCatalog = async () => {
     const publicationRoot = env(
       "PUBLISH_ROOT",
-      "/var/lib/gluster-packaging/repository",
+      "/mnt/pvc/gluster-repository-http",
     );
     await runInteractive(
       "node",
@@ -1354,7 +1354,7 @@ try {
   const reconcileCatalog = async () => {
     const publicationRoot = env(
       "PUBLISH_ROOT",
-      "/var/lib/gluster-packaging/repository",
+      "/mnt/pvc/gluster-repository-http",
     );
     const validationPaths = [
       "el10/x86_64/stable/validation.json",
@@ -1487,7 +1487,7 @@ try {
     try {
       const publicationRoot = env(
         "PUBLISH_ROOT",
-        "/var/lib/gluster-packaging/repository",
+        "/mnt/pvc/gluster-repository-http",
       );
       report = await generateReleaseReport({
         runId,

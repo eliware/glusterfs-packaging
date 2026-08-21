@@ -6,7 +6,7 @@ import { env, run } from "./lib.mjs";
 
 const repositoryRoot = env(
   "GLUSTER_REPOSITORY_ROOT",
-  "/var/lib/gluster-packaging/repository",
+  "/mnt/pvc/gluster-repository-http",
 );
 const backupRoot = env("REPO_BACKUP_ROOT", "/repo-backups");
 const remote = env("REPO_BACKUP_REMOTE");

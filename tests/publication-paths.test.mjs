@@ -19,11 +19,11 @@ test.each([
 test("resolves a normalized publication file beneath the repository root", () => {
   expect(
     publicationFile(
-      "/var/lib/gluster-packaging/repository",
+      "/mnt/pvc/gluster-repository-http",
       "/metadata/runs/run/provenance.json",
     ),
   ).toBe(
-    "/var/lib/gluster-packaging/repository/metadata/runs/run/provenance.json",
+    "/mnt/pvc/gluster-repository-http/metadata/runs/run/provenance.json",
   );
 });
 

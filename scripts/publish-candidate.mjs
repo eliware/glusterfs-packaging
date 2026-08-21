@@ -29,7 +29,7 @@ const rpmDirArgument = process.argv[4];
 const version = env("RELEASE_VERSION", "stable");
 const publishRoot = env(
   "PUBLISH_ROOT",
-  "/var/lib/gluster-packaging/repository",
+  "/mnt/pvc/gluster-repository-http",
 );
 const image = env("IMAGE_REFERENCE", "unknown");
 const digest = env("IMAGE_DIGEST", "unknown");

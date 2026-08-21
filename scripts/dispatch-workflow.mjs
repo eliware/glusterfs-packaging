@@ -36,7 +36,7 @@ const ghAttempts = Number(env("CONDUCTOR_GH_ATTEMPTS", "5"));
 const ghBackoffMs = Number(env("CONDUCTOR_GH_BACKOFF_MS", "2000"));
 const statusCachePath = env(
   "CONDUCTOR_GH_STATUS_CACHE",
-  "/var/lib/gluster-packaging/conductor/github-status.json",
+  "/mnt/pvc/gluster-build-workspaces/conductor/github-status.json",
 );
 const statusCacheTtlMs = Number(
   env("CONDUCTOR_GH_STATUS_CACHE_TTL_MS", "10000"),

@@ -5,6 +5,7 @@ import { readMetadata, writeMetadata } from "./metadata-io.mjs";
 import { withMetadataVersion } from "./metadata-version.mjs";
 import { catalogRepositoryLinks } from "./catalog-repositories.mjs";
 import { assertValidationRecord } from "./validation-schema.mjs";
+import { packagePublicationRelativePath } from "./publication-paths.mjs";
 const args = new Map();
 for (let i = 2; i < process.argv.length; i++)
   if (process.argv[i].startsWith("--"))
@@ -178,7 +179,16 @@ if (root) {
   if (channel === "stable")
     await writeMetadata(path.join(root, "metadata/stable.json"), record);
   else {
-    const dir = path.join(root, "el10/x86_64/previews", candidate);
+    const dir = path.join(
+      root,
+      packagePublicationRelativePath({
+        packageFormat,
+        distribution,
+        suite: args.get("suite") || undefined,
+        channel,
+        candidate,
+      }),
+    );
     await mkdir(dir, { recursive: true });
     await writeMetadata(path.join(dir, "metadata.json"), record);
   }

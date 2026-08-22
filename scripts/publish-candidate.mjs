@@ -27,10 +27,7 @@ const mode = process.argv[2] || "stable";
 const candidate = process.argv[3];
 const rpmDirArgument = process.argv[4];
 const version = env("RELEASE_VERSION", "stable");
-const publishRoot = env(
-  "PUBLISH_ROOT",
-  "/mnt/pvc/gluster-repository-http",
-);
+const publishRoot = env("PUBLISH_ROOT", "/mnt/pvc/gluster-repository-http");
 const image = env("IMAGE_REFERENCE", "unknown");
 const digest = env("IMAGE_DIGEST", "unknown");
 const rpmOnly = env("RPM_ONLY", "0") === "1";
@@ -244,7 +241,6 @@ try {
   }
 
   if (mode === "preview") await removeExpiredPreviewGenerations();
-  await removeMisplacedDebPreview();
   if (!rpmOnly && !packageOnly) {
     const catalogNext = path.join(publishRoot, "metadata/catalog.json.next");
     await runInteractive("node", [
@@ -306,6 +302,7 @@ try {
       "--generation",
       generation,
     ]);
+    await removeMisplacedDebPreview();
   }
 
   if (packageOnly) {

@@ -6,5 +6,5 @@ ConditionPathIsDirectory=/opt/gluster-packaging
 Type=oneshot
 User=root
 EnvironmentFile=-/etc/gluster-packaging/release.env
-Environment=CONDUCTOR_BACKUP_SCRIPT=/repo-backups/backup-repository.mjs
+Environment=CONDUCTOR_BACKUP_SCRIPT=/opt/gluster-packaging/scripts/commit-publish-repository.mjs
 ExecStart=/usr/bin/node /opt/gluster-packaging/scripts/conductor-service.mjs

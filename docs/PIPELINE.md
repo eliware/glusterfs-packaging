@@ -282,16 +282,17 @@ It then atomically updates `catalog.json`, repository indexes, release
 manifests, and run metadata. The publication queue ensures each update is
 based on the newest catalog state.
 
-### 11. Finalize and back up
+### 11. Finalize and publish the repository snapshot
 
 The conductor records the final run and per-lane checkpoints in
 `metadata/conductor-state.json`, sends the configured completion or failure
-notification, and only then runs the configured backup script. The backup
-therefore captures the repository artifacts, provenance, catalog, release
-report, and matching conductor state in one generation. Temporary candidates
-and logs are removed only after the related provenance and publication work is
-complete. Persistent ccache directories are retained unless the reset command
-explicitly enables cache removal.
+notification, and only then runs the configured repository snapshot script.
+The default deployment script commits and pushes the repository, capturing the
+repository artifacts, provenance, catalog, release report, and matching
+conductor state in Git. Temporary candidates and logs are removed only after
+the related provenance and publication work is complete. Persistent ccache
+directories are retained unless the reset command explicitly enables cache
+removal.
 
 Conductor output is intentionally human-readable and concise. The machine
 result is retained in the canonical state and provenance records rather than

@@ -96,9 +96,10 @@ provenance, image provenance, validation results, and release reports.
 
 Successful published release records are retained with their repository
 generation. Rolling package previews are subject to the configured preview
-retention policy. Local repository backups use the backup script's configured
-rotating generation count; the current deployment defaults to seven local
-generations and synchronizes the newest generation offsite.
+retention policy. Repository snapshots are committed and pushed by the
+configured conductor post-run script. Git history provides the recovery
+history for the published tree; signing keys, passphrase files, and other
+runtime credentials remain outside the repository.
 
 The guarded reset command can restore the publication tree, conductor state,
 and lane workspaces to seed state. It preserves lane ccaches unless cache

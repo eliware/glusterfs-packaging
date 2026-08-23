@@ -145,7 +145,13 @@ export function runInteractive(command, args = [], options = {}) {
       child.stdin.write(options.input);
       child.stdin.end();
     }
-    child.once("error", reject);
+    child.once("error", (error) => {
+      error.command = command;
+      error.args = args;
+      error.stdout = buffers.stdout;
+      error.stderr = buffers.stderr;
+      reject(error);
+    });
     child.once("exit", (code, signal) => {
       if (filtered && !options.silent) {
         for (const [name, buffer] of Object.entries(buffers))
@@ -153,8 +159,32 @@ export function runInteractive(command, args = [], options = {}) {
             (name === "stdout" ? process.stdout : process.stderr).write(buffer);
       }
       const finish = () => {
-        if (code === 0) resolve();
-        else reject(new Error(`${command} exited with ${code ?? signal}`));
+        if (code === 0) resolve({ stdout: buffers.stdout, stderr: buffers.stderr });
+        else {
+          const commandLine = [command, ...args].join(" ");
+          const summarize = (value) => {
+            const text = value.trim();
+            if (!text) return "";
+            return text.length > 4000
+              ? `${text.slice(-4000)} (last 4000 characters)`
+              : text;
+          };
+          const error = new Error(
+            `${commandLine} exited with ${code ?? signal}` +
+              (summarize(buffers.stderr)
+                ? `: ${summarize(buffers.stderr)}`
+                : summarize(buffers.stdout)
+                  ? `: ${summarize(buffers.stdout)}`
+                  : ""),
+          );
+          error.code = code;
+          error.signal = signal;
+          error.command = command;
+          error.args = args;
+          error.stdout = buffers.stdout;
+          error.stderr = buffers.stderr;
+          reject(error);
+        }
       };
       if (logStream) logStream.end(finish);
       else finish();

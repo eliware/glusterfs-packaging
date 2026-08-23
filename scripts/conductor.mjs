@@ -75,7 +75,7 @@ if (helpRequested) {
   process.exit(0);
 }
 const {
-  backupScript,
+  repositoryCommitScript,
   lockDir,
   noRebuild,
   skipPublication,
@@ -86,6 +86,7 @@ const {
 let statusDirectory = "";
 let conductorStatus;
 let completedNoOp = false;
+let completedSuccessfully = false;
 const log = (message, details = "") => {
   const suffix = details ? ` ${details}` : "";
   console.log(`[conductor] ${message}${suffix}`);
@@ -1548,6 +1549,9 @@ try {
     "run result",
     `run=${runId} lanes=${results.filter((result) => result.status === "fulfilled").length}/${results.length}`,
   );
+  completedSuccessfully =
+    !results.some((result) => result.status === "rejected") &&
+    process.exitCode !== 1;
 } catch (error) {
   if (error instanceof NoOpRun) {
     completedNoOp = true;
@@ -1593,14 +1597,19 @@ try {
   if (conductorStatus) conductorStatus.stop();
   if (statusDirectory)
     await rm(statusDirectory, { recursive: true, force: true });
-  if (backupScript && !dryRun && !completedNoOp) {
+  if (
+    repositoryCommitScript &&
+    !dryRun &&
+    !completedNoOp &&
+    completedSuccessfully
+  ) {
     try {
-      log("running repository backup");
-      await run("node", [backupScript], { stream: true, silent: true });
-      log("repository backup completed");
+      log("committing and pushing repository state");
+      await run("node", [repositoryCommitScript], { stream: true, silent: true });
+      log("repository state committed and pushed");
     } catch (error) {
-      log("repository backup failed", error.message);
-      await notifyFailure("Repository backup failed", error);
+      log("repository commit/push failed", error.message);
+      await notifyFailure("Repository commit/push failed", error);
       process.exitCode = 1;
     }
   }

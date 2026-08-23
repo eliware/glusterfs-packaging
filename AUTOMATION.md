@@ -77,9 +77,10 @@ workspaces and retained build logs are under the configured workspace root.
 Published repositories and release metadata are under the configured
 repository publication root.
 
-After a non-dry-run completion, the configured backup script keeps rotated
-local repository generations and synchronizes the newest backup offsite. Git
-source is not duplicated by this backup because it is recoverable from GitHub.
+After a non-dry-run completion that changes published state, the configured
+repository script commits and pushes the publication repository. Git is the
+source of truth for published packages, metadata, provenance, and release
+records; no legacy `/repo-backups` step is part of the conductor path.
 
 Use a direct dry run to inspect discovery, checkpoint decisions, and planned
 lane transitions without dispatching workflows or publishing artifacts:

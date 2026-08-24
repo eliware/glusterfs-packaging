@@ -1556,8 +1556,8 @@ try {
   if (error instanceof NoOpRun) {
     completedNoOp = true;
     log(
-      "no-op run completed",
-      "all package and image checkpoints were current",
+      "NOOP",
+      "all package and image checkpoints are current; repository left unchanged",
     );
     await notifyConductor({
       title: "Conductor no-op completed",

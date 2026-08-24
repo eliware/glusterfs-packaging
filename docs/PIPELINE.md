@@ -168,6 +168,11 @@ stops before scheduling builds and does not alter release metadata.
 
 ### 3. Select lanes and evaluate checkpoints
 
+If every package and image checkpoint is current, the conductor exits as a
+successful no-op. It does not create a run record, rewrite metadata, generate
+release artifacts, commit, push, or run a backup. It logs a concise `NOOP`
+result and sends the configured Discord notification.
+
 Stable and rolling lanes are evaluated independently. A package build is
 skipped only when its package checkpoint matches the source commit,
 release/channel, package format, distribution, suite, and version; has

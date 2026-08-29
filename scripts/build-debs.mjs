@@ -17,6 +17,7 @@ import {
   run,
   runInteractive,
 } from "./lib.mjs";
+import { pythonPatchAction } from "./python-patch.mjs";
 
 const configFile = env(
   "BUILD_CONFIG",
@@ -88,19 +89,17 @@ const patchFile = path.join(
   repoRoot,
   "patches/python312-version-detection.patch",
 );
+const pythonMacroFile = path.join(sourceDir, "contrib/aclocal/python.m4");
 if (env("APPLY_PATCHES", "1") === "1" && (await exists(patchFile))) {
-  try {
+  const sourceText = (await exists(pythonMacroFile))
+    ? await readFile(pythonMacroFile, "utf8")
+    : null;
+  const action = pythonPatchAction(sourceText);
+  if (action === "apply") {
     await run("git", ["-C", sourceDir, "apply", "--check", patchFile]);
     await runInteractive("git", ["-C", sourceDir, "apply", patchFile]);
-  } catch {
-    await run("git", [
-      "-C",
-      sourceDir,
-      "apply",
-      "--reverse",
-      "--check",
-      patchFile,
-    ]);
+  } else if (action === "error") {
+    throw new Error(`patch target has unexpected contents: ${pythonMacroFile}`);
   }
 }
 

@@ -5,6 +5,10 @@ Subject: [PATCH] build: detect Python 3.12 correctly
 
 Python 3.12 requires four characters from sys.version to preserve the full
 major/minor version. The old [:3] expression turns 3.12 into 3.1.
+
+Upstream commit 448c19095c removed contrib/aclocal/python.m4 and switched to
+the host Automake/Autoconf macros. The packaging builders skip this legacy
+patch when that file is absent or already contains the corrected expression.
 ---
  contrib/aclocal/python.m4 | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

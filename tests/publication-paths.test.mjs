@@ -3,6 +3,7 @@ import {
   publicationFile,
   publicationRelativePath,
 } from "../scripts/publication-paths.mjs";
+import path from "node:path";
 
 test.each([
   ["rpm", "epel10", undefined, "el10/x86_64/previews/rolling-abc"],
@@ -42,7 +43,9 @@ test("resolves a normalized publication file beneath the repository root", () =>
       "/mnt/pvc/gluster-repository-http",
       "/metadata/runs/run/provenance.json",
     ),
-  ).toBe("/mnt/pvc/gluster-repository-http/metadata/runs/run/provenance.json");
+  ).toBe(
+    path.normalize("/mnt/pvc/gluster-repository-http/metadata/runs/run/provenance.json"),
+  );
 });
 
 test("rejects path traversal", () => {

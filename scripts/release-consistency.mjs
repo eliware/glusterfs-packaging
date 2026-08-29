@@ -28,6 +28,7 @@ export function findReleaseConsistencyIssues({
     for (const [distribution, imageCheckpoint] of Object.entries(
       checkpoint.images || {},
     )) {
+      if (imageCheckpoint?.status === "failed") continue;
       const image = imageCheckpoint.result || imageCheckpoint;
       if (!image.digest?.startsWith("sha256:")) {
         issues.push(`${lane}/${distribution}: missing image digest`);

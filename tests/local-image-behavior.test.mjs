@@ -10,6 +10,8 @@ import {
   writePendingImagePublication,
 } from "../scripts/local-image-result.mjs";
 
+const logicalPath = (value) => String(value).replaceAll("\\", "/");
+
 test("refactored local image stages preserve the previous RPM order", async () => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "gluster-image-behavior-"),
@@ -57,7 +59,7 @@ test("refactored local image stages preserve the previous RPM order", async () =
     await writeLocalImageResult(config);
 
     expect(
-      calls.map(([kind, command, args]) => [kind, command, args[0]]),
+      calls.map(([kind, command, args]) => [kind, command, logicalPath(args[0])]),
     ).toEqual([
       ["run", "docker", "build"],
       ["run", "node", "/repo/tests/container-smoke.mjs"],
@@ -156,7 +158,7 @@ test("refactored local image stages preserve the previous DEB order", async () =
     await writeLocalImageResult(config);
 
     expect(
-      calls.map(([kind, command, args]) => [kind, command, args[0]]),
+      calls.map(([kind, command, args]) => [kind, command, logicalPath(args[0])]),
     ).toEqual([
       ["run", "docker", "build"],
       ["run", "node", "/repo/tests/container-smoke-deb.mjs"],
@@ -208,7 +210,7 @@ test("a smoke-test failure stops before label verification or publication", asyn
   );
   expect(calls).toHaveLength(1);
   expect(calls[0][1]).toBe("node");
-  expect(calls[0][2][0]).toBe("/repo/tests/container-smoke-deb.mjs");
+  expect(logicalPath(calls[0][2][0])).toBe("/repo/tests/container-smoke-deb.mjs");
 });
 
 test.each([
@@ -236,7 +238,10 @@ test.each([
 
     await smokeTestLocalImage(config);
 
-    expect(calls[0]).toEqual(["node", [`/repo/tests/${smokeFile}`]]);
+    expect([calls[0][0], calls[0][1].map(logicalPath)]).toEqual([
+      "node",
+      [`/repo/tests/${smokeFile}`],
+    ]);
   },
 );
 

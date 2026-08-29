@@ -54,8 +54,8 @@ test("lane image recorder publishes through the serialized callback", async () =
     },
     runInteractive: async (...args) => {
       calls.push(args[1]);
-      if (args[1][0].endsWith("scripts/write-catalog.mjs"))
-        await writeFile(args[1][2], "{}");
+      if (args[1][0].endsWith("write-catalog.mjs"))
+        await writeFile(args[1][args[1].indexOf("--output") + 1], "{}");
     },
     tempDir: async () => {
       const directory = path.join(pathRoot, "container-validation");

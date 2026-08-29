@@ -103,3 +103,25 @@ test("rejects an image checkpoint with a missing package candidate", () => {
     }),
   ).toBe(false);
 });
+
+test("does not reuse a failed target checkpoint", () => {
+  const laneValue = lane("epel10-rolling", "rolling-source");
+  const baseImage = "rockylinux/rockylinux:10@sha256:base-rolling";
+  expect(
+    isImageCheckpointValid({
+      checkpoint: {
+        status: "failed",
+        source_commit: laneValue.sourceCommit,
+        package_candidate: "epel10-rolling-11.2",
+        base_image: baseImage,
+        distribution: "rocky",
+        provenance: "/metadata/runs/run/failure/provenance.json",
+      },
+      lane: laneValue,
+      distribution: "rocky",
+      baseImage,
+      packageCandidate: "epel10-rolling-11.2",
+      provenanceExists: true,
+    }),
+  ).toBe(false);
+});

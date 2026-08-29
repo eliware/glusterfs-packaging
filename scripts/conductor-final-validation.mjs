@@ -19,9 +19,9 @@ export async function validatePublishedArtifacts({
   });
   const failures = [];
   const consistencyCheckpoints = Object.fromEntries(
-    results
-      .filter((result) => result.status === "fulfilled")
-      .map((result, index) => [lanes[index].id, result.value]),
+    results.flatMap((result, index) =>
+      result.status === "fulfilled" ? [[lanes[index].id, result.value]] : [],
+    ),
   );
   failures.push(
     ...findReleaseConsistencyIssues({
@@ -88,6 +88,22 @@ export async function validatePublishedArtifacts({
         ? ["centos-stream", "rocky", "alma", "oracle"]
         : [lane.distribution];
     for (const distribution of expectedImages) {
+      const imageFailure = value.image_failures?.find(
+        (failure) => failure.distribution === distribution,
+      );
+      if (imageFailure) {
+        if (!imageFailure.provenance)
+          failures.push(
+            `${lane.id}/${distribution}: missing image failure provenance`,
+          );
+        else
+          await checkMetadata(
+            publicationFile(publicationRoot, imageFailure.provenance),
+            `${lane.id}/${distribution} image failure provenance`,
+            ["schema", "record", "files", "checksums_sha256"],
+          );
+        continue;
+      }
       const image = value.images?.[distribution];
       if (!image?.provenance)
         failures.push(`${lane.id}/${distribution}: missing image provenance`);

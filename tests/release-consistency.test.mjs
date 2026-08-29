@@ -61,3 +61,14 @@ test("reports missing image and provenance linkage", () => {
     ]),
   );
 });
+
+test("ignores failed image checkpoints while validating published targets", () => {
+  const state = validState();
+  state.checkpoints["debian-stable"].images.rocky = {
+    status: "failed",
+    distribution: "rocky",
+    error: "smoke test failed",
+    provenance: "/metadata/runs/run/failure/provenance.json",
+  };
+  expect(findReleaseConsistencyIssues(state)).toEqual([]);
+});

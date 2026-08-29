@@ -33,6 +33,33 @@ const recordFiles = async (directory) => {
   return records;
 };
 
+const failureTargets = async (directory) => {
+  const failures = new Map();
+  const walk = async (current) => {
+    let entries;
+    try {
+      entries = await readdir(current, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === "ENOENT") return;
+      throw error;
+    }
+    for (const entry of entries) {
+      const file = path.join(current, entry.name);
+      if (entry.isDirectory()) await walk(file);
+      else if (entry.name === "failure-record.json") {
+        const record = await readMetadata(file, { allowMissing: true });
+        if (record?.lane && record?.distribution && record?.package_candidate)
+          failures.set(
+            `${record.package_candidate}:${record.distribution}`,
+            record.failed_at || null,
+          );
+      }
+    }
+  };
+  await walk(directory);
+  return failures;
+};
+
 const newest = (records) =>
   [...records].sort((left, right) =>
     String(right.built || right.generated).localeCompare(
@@ -86,8 +113,17 @@ export async function rebuildCatalog({ root, output, generation = null }) {
     path.join(root, "metadata/catalog.json"),
     { allowMissing: true },
   );
+  const failedImages = await failureTargets(path.join(root, "metadata/runs"));
   const imageRecords = [...stableRecords, ...previewRecords].filter(
-    (record) => record.image?.repository && record.image?.digest,
+    (record) =>
+      record.image?.repository &&
+      record.image?.digest &&
+      (() => {
+        const failedAt = failedImages.get(
+          `${record.image.package_candidate}:${record.image.distribution}`,
+        );
+        return !failedAt || String(record.built || record.generated) > failedAt;
+      })(),
   );
   const images = Array.from(
     new Map(

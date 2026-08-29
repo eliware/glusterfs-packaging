@@ -44,7 +44,11 @@ import {
 } from "./package-validation.mjs";
 import { runPackageSmoke2 } from "./package-lane.mjs";
 import { createConductorStatus } from "./conductor-logging.mjs";
-import { buildLanes, imageTargetsForLane } from "./lane-config.mjs";
+import {
+  buildLanes,
+  hasRequiredImageFailure,
+  imageTargetsForLane,
+} from "./lane-config.mjs";
 import {
   compactTimestamp,
   dateStamp,
@@ -651,6 +655,60 @@ try {
     await rm(validationFile, { force: true });
     return `/metadata/runs/${runId}/${lane.id}/${distribution}/provenance.json`;
   };
+  const writeImageFailureProvenance = async (
+    lane,
+    distribution,
+    packageCandidate,
+    error,
+  ) => {
+    if (dryRun || skipPublication) return "";
+    const publicationRoot = env(
+      "PUBLISH_ROOT",
+      "/mnt/pvc/gluster-repository-http",
+    );
+    const outputDir = path.join(
+      publicationRoot,
+      "metadata",
+      "runs",
+      runId,
+      lane.id,
+      distribution,
+      "failure",
+    );
+    const recordFile = path.join(outputDir, "failure-record.json");
+    const record = {
+      kind: "image-failure",
+      status: "failed",
+      run_id: runId,
+      lane: lane.id,
+      distribution,
+      source: { ref: lane.sourceRef, commit: lane.sourceCommit },
+      package_candidate: packageCandidate,
+      base_image: error?.base_key ? baseImages[error.base_key] : null,
+      error: error?.message || String(error),
+      failed_at: new Date().toISOString(),
+      log: error?.image_build_log || null,
+    };
+    await mkdir(outputDir, { recursive: true });
+    await writeFile(recordFile, `${JSON.stringify(record, null, 2)}\n`);
+    await runInteractive(
+      "node",
+      [
+        path.join(repoRoot, "scripts/write-provenance.mjs"),
+        "--output-dir",
+        outputDir,
+        "--record-json",
+        recordFile,
+      ],
+      { env: process.env, silent: true },
+    );
+    await runInteractive(
+      "node",
+      [path.join(repoRoot, "scripts/verify-provenance.mjs"), outputDir],
+      { silent: true },
+    );
+    return `/metadata/runs/${runId}/${lane.id}/${distribution}/failure/provenance.json`;
+  };
   const runLane = async (lane) => {
     const prior = previous.checkpoints[lane.id] || {};
     let checkpoint = stageCheckpoints.get(lane.id) || prior;
@@ -823,6 +881,7 @@ try {
       }
     }
     let images = [];
+    const imageFailures = [];
     const recordImage = createLaneImageRecorder({
       baseImages,
       enqueuePublication,
@@ -1111,6 +1170,9 @@ try {
                   log: "0/1",
                   error: error.message,
                 });
+                error.image_build_log = imageBuildLog;
+                error.distribution = distribution;
+                error.base_key = baseKey;
                 throw error;
               }
               const imageResult = JSON.parse(
@@ -1160,7 +1222,46 @@ try {
             }),
           );
       for (const imageResult of imageResults) {
-        if (imageResult.status === "rejected") throw imageResult.reason;
+        if (imageResult.status === "rejected") {
+          const error = imageResult.reason;
+          const message = error?.stack || String(error);
+          const distribution = imageResult.reason?.distribution || "unknown";
+          imageFailures.push({
+            distribution,
+            status: "failed",
+            error: message,
+            provenance: await writeImageFailureProvenance(
+              lane,
+              distribution,
+              publishedCandidate,
+              error,
+            ),
+          });
+          checkpoint = {
+            ...checkpoint,
+            images: {
+              ...checkpoint.images,
+              [distribution]: {
+                status: "failed",
+                source_commit: lane.sourceCommit,
+                package_candidate: publishedCandidate,
+                base_image: error.base_key
+                  ? baseImages[error.base_key]
+                  : null,
+                distribution,
+                error: message,
+                provenance: imageFailures.at(-1).provenance,
+                failed_at: new Date().toISOString(),
+              },
+            },
+          };
+          await saveStageCheckpoint(lane, checkpoint);
+          log(
+            `${lane.id}: image failed`,
+            `${distribution} ${message.split("\n", 1)[0]}`,
+          );
+          continue;
+        }
         const {
           distribution,
           imageResult: resultImage,
@@ -1201,7 +1302,7 @@ try {
       await rm(validationTemp, { recursive: true, force: true });
     return {
       id: lane.id,
-      status: "published",
+      status: imageFailures.length ? "partial" : "published",
       source_commit: lane.sourceCommit,
       base_image: baseDigest(lane),
       candidate,
@@ -1210,6 +1311,7 @@ try {
       images: checkpoint.images || {},
       package: checkpoint.package,
       image_results: images,
+      image_failures: imageFailures,
       changed: Boolean(candidate || images.length),
     };
   };
@@ -1463,7 +1565,14 @@ try {
       process.exitCode = 1;
     }
   }
-  if (results.some((result) => result.status === "rejected"))
+  if (
+    results.some(
+      (result, index) =>
+        result.status === "rejected" ||
+        (result.status === "fulfilled" &&
+          hasRequiredImageFailure(lanes[index], result.value.image_failures)),
+    )
+  )
     process.exitCode = 1;
   log(
     "lane summary",
@@ -1529,10 +1638,14 @@ try {
       title: "Conductor run completed",
       description: results.some((result) => result.status === "rejected")
         ? "The release run completed with one or more failed lanes."
-        : "The release run completed successfully; existing checkpoints were reused.",
+        : results.some((result) => result.status === "partial")
+          ? "The release run completed with one or more failed optional image targets."
+          : "The release run completed successfully; existing checkpoints were reused.",
       status: results.some((result) => result.status === "rejected")
         ? "failure"
-        : "success",
+        : results.some((result) => result.status === "partial")
+          ? "warning"
+          : "success",
       fields: [
         {
           name: "Run",
@@ -1540,7 +1653,18 @@ try {
         },
         {
           name: "Lanes",
-          value: `${results.filter((result) => result.status === "fulfilled").length}/${results.length} successful`,
+          value: `${results.filter((result) => ["fulfilled", "partial"].includes(result.status)).length}/${results.length} lanes completed`,
+        },
+        {
+          name: "Optional target failures",
+          value:
+            results
+              .flatMap((result) =>
+                (result.value?.image_failures || []).map(
+                  (failure) => `${failure.distribution}: ${failure.error}`,
+                ),
+              )
+              .join("\n") || "None",
         },
       ],
       report,

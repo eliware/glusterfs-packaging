@@ -67,7 +67,11 @@ export function buildPlatformData(results) {
   const versions = new Set();
   const commits = new Set();
   for (const result of results) {
-    if (result.status !== "published" && result.status !== "fulfilled") {
+    if (
+      result.status !== "published" &&
+      result.status !== "fulfilled" &&
+      result.status !== "partial"
+    ) {
       const lane = result.id || result.lane || "unknown lane";
       const target = platforms.get(
         lane.startsWith("epel") ? "centos-stream" : lane.split("-")[0],
@@ -122,6 +126,12 @@ export function buildPlatformData(results) {
         url: imageUrl(image.image),
       });
     }
+    for (const failure of result.image_failures || []) {
+      const failureTarget = platforms.get(failure.distribution);
+      (failureTarget || platforms.get("centos-stream")).failures.push(
+        `${failure.distribution}: ${failure.error || "image target failed"}`,
+      );
+    }
   }
   return {
     platforms: [...platforms.values()].filter(
@@ -155,7 +165,10 @@ export async function generateReleaseReport({
   const successful = results.filter(
     (result) => result.status === "published" || result.status === "fulfilled",
   ).length;
-  const failed = results.length - successful;
+  const partial = results.filter((result) => result.status === "partial").length;
+  const failed = results.filter(
+    (result) => !["published", "fulfilled", "partial"].includes(result.status),
+  ).length;
   const data = buildPlatformData(results);
   const packageCount = results.filter(
     (result) =>
@@ -166,8 +179,12 @@ export async function generateReleaseReport({
     (total, platform) => total + platform.images.length,
     0,
   );
-  const status = failed ? "✕ VALIDATION FAILED" : "✓ PASSED · VALIDATION";
-  const statusColor = failed ? "#ef6b73" : "#55d68a";
+  const status = failed
+    ? "✕ VALIDATION FAILED"
+    : partial
+      ? "⚠ PARTIAL SUCCESS"
+      : "✓ PASSED · VALIDATION";
+  const statusColor = failed ? "#ef6b73" : partial ? "#f5c451" : "#55d68a";
   const cardUrl = `${baseUrl}/metadata/runs/${runId}/release-card.png`;
   const reportUrl = `${baseUrl}/metadata/runs/${runId}/release-report.json`;
   const latestCardUrl = `${baseUrl}/metadata/latest-release-card.png`;
@@ -269,7 +286,7 @@ export async function generateReleaseReport({
   const report = withMetadataVersion({
     run_id: runId,
     generated: new Date().toISOString(),
-    status: failed ? "attention" : "certified",
+    status: failed ? "attention" : partial ? "partial_success" : "certified",
     lanes_successful: successful,
     lanes_total: results.length,
     package_lanes: packageCount,
@@ -306,6 +323,7 @@ export async function generateReleaseReport({
     imageCount: images,
     packageCount,
     successful,
+    partial,
     total: results.length,
   };
 }

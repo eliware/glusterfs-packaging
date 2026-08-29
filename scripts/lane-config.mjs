@@ -1,3 +1,10 @@
+export const EPEL_IMAGE_TARGETS = [
+  { distribution: "centos-stream", baseKey: "centos", repositoryName: "centos10-gluster", required: true },
+  { distribution: "rocky", baseKey: "rocky", repositoryName: "rocky10-gluster", required: false },
+  { distribution: "alma", baseKey: "alma", repositoryName: "alma10-gluster", required: false },
+  { distribution: "oracle", baseKey: "oracle", repositoryName: "oracle10-gluster", required: false },
+];
+
 export function buildLanes({ stableTag, sourceCommit, rollingCommit, date }) {
   const stableVersion = stableTag.slice(1);
   const rollingVersion = `${date}-${rollingCommit.slice(0, 12)}`;
@@ -51,6 +58,7 @@ export function buildLanes({ stableTag, sourceCommit, rollingCommit, date }) {
       version: rollingVersion,
       packageVersion: `${date}-0.git${rollingCommit.slice(0, 12)}`,
       workflow: "rpm-package-build.yml",
+      imageTargets: EPEL_IMAGE_TARGETS,
     },
     {
       id: "debian-rolling",
@@ -83,13 +91,23 @@ export function buildLanes({ stableTag, sourceCommit, rollingCommit, date }) {
 
 export function imageTargetsForLane(lane) {
   if (lane.format === "rpm")
-    return [
-      ["centos-stream", "centos", "centos10-gluster"],
-      ["rocky", "rocky", "rocky10-gluster"],
-      ["alma", "alma", "alma10-gluster"],
-      ["oracle", "oracle", "oracle10-gluster"],
-    ];
+    return (lane.imageTargets || EPEL_IMAGE_TARGETS).map(
+      ({ distribution, baseKey, repositoryName }) => [
+        distribution,
+        baseKey,
+        repositoryName,
+      ],
+    );
   return lane.distribution === "debian"
     ? [["debian", "debian", "debian12-gluster"]]
     : [["ubuntu", "ubuntu", "ubuntu24-gluster"]];
+}
+
+export function hasRequiredImageFailure(lane, failures = []) {
+  const required = new Set(
+    (lane.imageTargets || EPEL_IMAGE_TARGETS)
+      .filter((target) => target.required)
+      .map((target) => target.distribution),
+  );
+  return failures.some((failure) => required.has(failure.distribution));
 }

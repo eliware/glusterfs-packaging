@@ -50,3 +50,31 @@ test("release report aggregates package and image lanes by platform", () => {
   );
   expect(data.validation).toEqual({ passed: 2, total: 2 });
 });
+
+test("release report retains successful images and records partial target failures", () => {
+  const data = buildPlatformData([
+    {
+      id: "epel10-rolling",
+      status: "partial",
+      build: { package_format: "rpm", channel: "preview", version: "rolling" },
+      images: {
+        "centos-stream": {
+          result: { distribution: "centos-stream", image: "centos", digest: "sha256:ok" },
+        },
+      },
+      image_failures: [
+        { distribution: "rocky", error: "EPEL metadata unavailable" },
+      ],
+    },
+  ]);
+
+  expect(data.platforms).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: "centos-stream", images: [expect.anything()] }),
+      expect.objectContaining({
+        id: "rocky",
+        failures: ["rocky: EPEL metadata unavailable"],
+      }),
+    ]),
+  );
+});

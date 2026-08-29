@@ -2,7 +2,12 @@ import { sendMessage } from "@eliware/discord-webhook";
 import { env } from "./lib.mjs";
 
 const webhookUrl = env("CONDUCTOR_DISCORD_WEBHOOK", env("DISCORD_WEBHOOK", ""));
-const colors = { success: 0x2ecc71, failure: 0xe74c3c, info: 0x3498db };
+const colors = {
+  success: 0x2ecc71,
+  failure: 0xe74c3c,
+  warning: 0xf5c451,
+  info: 0x3498db,
+};
 const avatarUrl = "https://glusterfs.eliware.org/assets/eliware-brand.svg";
 const thumbnailUrl =
   "https://glusterfs.eliware.org/assets/gluster-logo-thumb.webp";

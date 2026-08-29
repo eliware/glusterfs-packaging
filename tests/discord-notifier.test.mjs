@@ -3,6 +3,14 @@ import {
   truncateDiscord,
 } from "../scripts/discord-notifier.mjs";
 
+test("supports warning notifications for partial runs", async () => {
+  await expect((await import("../scripts/discord-notifier.mjs")).notifyConductor({
+    title: "partial",
+    description: "one optional target failed",
+    status: "warning",
+  })).resolves.toBe(false);
+});
+
 test("Discord text truncation preserves the limit and adds an ellipsis", () => {
   expect(truncateDiscord("abcdefgh", 5)).toBe("abcd…");
   expect(truncateDiscord("short", 10)).toBe("short");

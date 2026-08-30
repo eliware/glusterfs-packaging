@@ -1,0 +1,10 @@
+version: 1
+on:
+  push:
+    deployments:
+      - target: dev
+        cwd: /opt/gluster-packaging
+        timeoutMs: 300000
+        commands:
+          - git pull --ff-only
+          - .knit/validate-publication.sh

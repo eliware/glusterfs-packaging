@@ -17,12 +17,12 @@ export function rollingImageTags(date, sourceCommit, baseDigest) {
   return { exact, aliases: ["rolling"] };
 }
 
-export function imageReference(tag) {
-  return `${IMAGE_REPOSITORY}:${tag}`;
+export function imageReference(tag, repository = IMAGE_REPOSITORY) {
+  return `${repository}:${tag}`;
 }
 
 export function imageNames(tags) {
-  return [tags.exact, ...tags.aliases].map(imageReference);
+  return [tags.exact, ...tags.aliases].map((tag) => imageReference(tag));
 }
 
 export function sourceFingerprint({

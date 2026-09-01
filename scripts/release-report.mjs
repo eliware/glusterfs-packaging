@@ -206,13 +206,13 @@ export async function generateReleaseReport({
       const link = item.provenance
         ? `${baseUrl}${item.provenance.startsWith("/") ? item.provenance : `/${item.provenance}`}`
         : "";
-      return `${platform.label}: ${item.format} ${item.channel} ${item.version}${link ? ` ([provenance](${link}))` : ""}`;
+      return `${escapeHtml(platform.label)}: ${escapeHtml(item.format)} ${escapeHtml(item.channel)} ${escapeHtml(item.version)}${link ? ` ([provenance](${link}))` : ""}`;
     }),
   );
   const imageFields = data.platforms.flatMap((platform) =>
     platform.images.map(
       (item) =>
-        `${platform.label}: ${item.image}${item.url ? ` ([GHCR](${item.url}))` : ""}`,
+        `${escapeHtml(platform.label)}: ${escapeHtml(item.image)}${item.url ? ` ([GHCR](${escapeHtml(item.url)}))` : ""}`,
     ),
   );
   const fields = [

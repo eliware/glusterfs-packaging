@@ -74,7 +74,10 @@ try {
   } catch {}
   for (const [label, file] of suppliedAssets) {
     if (!label || !file) throw new Error("--asset requires LABEL FILE");
-    await cp(file, path.join(stagedAssets, path.basename(file)));
+    const destination = path.join(stagedAssets, path.basename(file));
+    if (await import("node:fs/promises").then(({ access }) => access(destination).then(() => true).catch(() => false)))
+      throw new Error(`duplicate provenance asset basename: ${path.basename(file)}`);
+    await cp(file, destination);
   }
 
   const writerArgs = [

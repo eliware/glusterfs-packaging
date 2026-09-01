@@ -20,6 +20,8 @@ for (const directory of [versionDir, stableDir]) {
   const rpmFiles = (await readdir(directory))
     .filter((file) => file.endsWith(".rpm"))
     .sort();
+  if (!rpmFiles.length)
+    throw new Error(`no RPM files found in ${directory}`);
   const { stdout } = await run("sha256sum", ["--", ...rpmFiles], {
     cwd: directory,
     capture: true,

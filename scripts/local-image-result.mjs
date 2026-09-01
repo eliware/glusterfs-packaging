@@ -55,7 +55,13 @@ export async function writeLocalImageResult(config) {
   ).stdout
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .find((line) => line.startsWith(`${config.image.split(":")[0]}@sha256:`))
+    .find((line) => {
+      const reference = config.image.split("@", 1)[0];
+      const slash = reference.lastIndexOf("/");
+      const colon = reference.lastIndexOf(":");
+      const repository = colon > slash ? reference.slice(0, colon) : reference;
+      return line.startsWith(`${repository}@sha256:`);
+    })
     ?.split("@")[1];
   if (config.requirePublishedDigest && !pushedDigest)
     throw new Error(`no published digest found for ${config.image}`);

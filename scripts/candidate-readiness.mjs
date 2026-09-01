@@ -109,7 +109,9 @@ async function verifyCandidateOnce({ candidateDir, packageDir }) {
   if (manifest.files.length !== ready.file_count)
     throw new Error("candidate file count does not match its ready marker");
   for (const entry of manifest.files) {
-    const file = path.join(packages, entry.path);
+    const file = path.resolve(packages, entry.path);
+    if (file !== packages && !file.startsWith(`${packages}${path.sep}`))
+      throw new Error(`candidate manifest path escapes package directory: ${entry.path}`);
     const information = await lstat(file);
     if (!information.isFile())
       throw new Error(`candidate file is missing: ${entry.path}`);

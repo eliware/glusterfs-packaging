@@ -1364,6 +1364,7 @@ try {
     return output;
   };
   const results = await Promise.allSettled(lanes.map(runLane));
+  await publicationQueue;
   if (
     !dryRun &&
     results.every(

@@ -1,5 +1,9 @@
 export function aliasImageName(image, alias) {
-  return `${image.slice(0, image.lastIndexOf(":"))}:${alias}`;
+  const reference = image.split("@", 1)[0];
+  const slash = reference.lastIndexOf("/");
+  const colon = reference.lastIndexOf(":");
+  const repository = colon > slash ? reference.slice(0, colon) : reference;
+  return `${repository}:${alias}`;
 }
 
 export async function publishLocalImage(config) {

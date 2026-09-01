@@ -50,8 +50,9 @@ infrastructure outside the repository.
   prevent concurrent corruption or resource exhaustion.
 - Sends Discord notifications for stage progress, checkpoint completion, and
   failure conditions when configured by the operator.
-- Supports repository backup and rotation through the release tooling without
-  embedding backup destinations or credentials in public files.
+- Supports repository backup and rotation through separate operational release
+  tooling without embedding backup destinations or credentials in public
+  files; the conductor does not invoke the backup tool.
 
 ### Validation gates
 

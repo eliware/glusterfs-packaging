@@ -64,7 +64,8 @@ checkpoint decisions, local Docker Smoke-2 and image tests, package signing,
 repository publication, local GHCR publication, provenance, catalogs, backups,
 and notifications.
 
-Before any build starts, the conductor authenticates to Docker Hub and requires
+Before any build starts, the conductor checks Docker Hub access when an
+unpinned Docker Hub base reference must be resolved and requires
 both quota headers plus a safety floor of 24 remaining pulls. Missing headers,
 network failures, and Docker Hub 5xx responses are retried four times with
 backoff; a low or exhausted quota defers the run without starting work. The
@@ -149,9 +150,10 @@ Before scheduling work, the conductor verifies:
   references;
 - GitHub API access and Actions dispatch availability;
 - Docker Hub quota when an unpinned base reference must be resolved;
-- local Docker, Git, signing, repository, and workspace prerequisites.
+- local prerequisites are checked by the individual build, signing, and
+  publication stages as they are needed.
 
-All Docker Hub access is authenticated. The conductor reads the Docker CLI
+Docker Hub access is authenticated when required. The conductor reads the Docker CLI
 credential at `/root/.docker/config.json` (or `DOCKER_CONFIG`) and uses it for
 the quota-token request and Skopeo digest inspection; the Docker CLI uses the
 same credential for image pulls. The Debian and Ubuntu builder-image
@@ -169,9 +171,10 @@ stops before scheduling builds and does not alter release metadata.
 ### 3. Select lanes and evaluate checkpoints
 
 If every package and image checkpoint is current, the conductor exits as a
-successful no-op. It does not create a run record, rewrite metadata, generate
-release artifacts, commit, push, or run a backup. It logs a concise `NOOP`
-result and sends the configured Discord notification.
+successful no-op. It creates only transient status state, then removes it; it
+does not persist a run record, rewrite metadata, generate release artifacts,
+commit, push, or run a backup. It logs a concise `NOOP` result and sends the
+configured Discord notification.
 
 Stable and rolling lanes are evaluated independently. A package build is
 skipped only when its package checkpoint matches the source commit,
@@ -182,7 +185,8 @@ repository metadata, and signatures.
 An image build is evaluated separately. A valid package checkpoint never marks
 an image complete. An image is skipped only when its own checkpoint matches the
 source commit, base-image digest, package provenance, image tag, container
-validation, immutable digest, and image provenance.
+validation, immutable digest, and a provenance document that passes
+`verify-provenance.mjs`; merely finding a provenance file is insufficient.
 
 This separation lets a rerun skip valid package work and continue with missing
 Smoke-2, publication, provenance, or image work.
@@ -215,9 +219,10 @@ time across all lanes to protect the development VM from CPU, memory, and
 Docker contention. These tests do not use Docker-in-Docker, ARC sidecars, or a
 PVC-mounted Docker daemon.
 
-The conductor saves each result as Smoke-2 and updates the staged checkpoint
-after each passing target. A failed target leaves the candidate available for a
-diagnostic rerun and prevents publication for that lane.
+The conductor saves each result as Smoke-2 and updates the staged
+pre-publication checkpoint after each passing target. A failed target leaves
+the candidate available for a diagnostic rerun and prevents publication for
+that lane.
 
 ### 6. Sign and publish packages
 
@@ -228,7 +233,7 @@ After Smoke-1 and all required Smoke-2 targets pass, the conductor:
 3. signs the DEB repository metadata as configured;
 4. publishes the candidate into the stable or rolling repository path;
 5. verifies repository metadata, checksums, signatures, and provenance;
-6. records the package checkpoint.
+6. records the package checkpoint after the queued publication completes.
 
 A successful package checkpoint is independent of image completion. Packages
 remain published if a later image build fails.
@@ -244,10 +249,11 @@ parallel with the local Docker engine:
 | Debian DEB | `debian12-gluster`                                                          |
 | Ubuntu DEB | `ubuntu24-gluster`                                                          |
 
-The conductor acquires `local-image-build.lock` before each complete image
-build, Smoke-3 test, label validation, and GHCR publication. Image targets are
-scheduled independently, but this lock intentionally executes the complete
-image operations one at a time on the development VM. The existing
+The conductor acquires `local-image-build.lock` around the child image
+build/publish operation. Image targets are scheduled independently, but this
+lock intentionally serializes the Docker-heavy operation on the development
+VM; provenance and catalog reconciliation happen in the coordinator outside
+that lock. The existing
 Dockerfiles under `containers/` are used. Each build receives an immutable
 base-image reference, the URL of the already-published signed package
 repository, package provenance, source commit, packaging commit, and
@@ -283,8 +289,9 @@ repository and metadata digest, source ref and commit, packaging commit,
 immutable base-image digest, final GHCR image reference and digest, and
 Smoke-3 and image-label validation.
 
-It then atomically updates `catalog.json`, repository indexes, release
-manifests, and run metadata. The publication queue ensures each update is
+It then updates `catalog.json`, repository indexes, release manifests, and run
+metadata. Each file is replaced atomically, but the group is not one
+cross-file transaction. The publication queue ensures each update is
 based on the newest catalog state.
 
 ### 11. Finalize and publish the repository snapshot

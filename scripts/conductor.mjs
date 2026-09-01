@@ -1724,6 +1724,7 @@ try {
   if (
     repositoryCommitScript &&
     !dryRun &&
+    !skipPublication &&
     !completedNoOp &&
     completedSuccessfully
   ) {

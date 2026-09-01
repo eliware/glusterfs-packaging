@@ -134,7 +134,8 @@ metadata, and provenance contracts that the HTTP service adapts.
 - Node.js 26 or newer and npm.
 - Git, Docker, GPG, native RPM/DEB tooling, and the relevant build container
   tools for package development.
-- Chromium/Chrome is optional for local release-card rendering.
+- Chromium/Chrome and the Eliware branding asset are required for wet-run
+  release-card rendering; dry runs do not generate release cards.
 
 Install dependencies and run the core checks:
 

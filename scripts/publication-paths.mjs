@@ -26,9 +26,16 @@ export function publicationRelativePath(reference) {
     ? new URL(reference).pathname
     : reference;
   const relative = value.replace(/^\/+/, "");
-  if (!relative || relative.split("/").includes(".."))
+  let decoded;
+  try {
+    decoded = decodeURIComponent(relative);
+  } catch {
     throw new Error(`invalid publication path: ${reference}`);
-  return relative;
+  }
+  const segments = decoded.replaceAll("\\", "/").split("/");
+  if (!relative || segments.some((segment) => segment === ".." || segment === ".") || decoded.includes("\\"))
+    throw new Error(`invalid publication path: ${reference}`);
+  return decoded;
 }
 
 export function publicationFile(root, reference) {

@@ -145,7 +145,7 @@ const listArgs = [
   "--limit",
   "50",
   "--json",
-  "databaseId,createdAt,displayTitle,event,workflowName",
+  "databaseId,createdAt,displayTitle,name,event,workflowName",
 ];
 const findRun = async () => {
   const runs = JSON.parse(
@@ -155,13 +155,12 @@ const findRun = async () => {
     .filter(
       (item) =>
         Date.parse(item.createdAt) >= dispatchedAt - 30_000 &&
-        item.event === "workflow_dispatch" &&
-        item.workflowName === workflow,
+        item.event === "workflow_dispatch",
     )
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .find((candidate) =>
       new RegExp(`(?:^|\\s)${dispatchId}(?:$|\\s)`).test(
-        String(candidate.displayTitle || ""),
+        `${candidate.displayTitle || ""} ${candidate.name || ""}`,
       ),
     );
 };

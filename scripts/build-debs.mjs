@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import crypto from "node:crypto";
+import { createReadStream } from "node:fs";
 import path from "node:path";
 import {
   copyFile,
@@ -116,10 +117,9 @@ if (!(await exists(archive)))
     archive,
     config.DEB_PACKAGING_URL,
   ]);
-const digest = crypto
-  .createHash("sha256")
-  .update(await readFile(archive))
-  .digest("hex");
+const hash = crypto.createHash("sha256");
+for await (const chunk of createReadStream(archive)) hash.update(chunk);
+const digest = hash.digest("hex");
 if (digest !== config.DEB_PACKAGING_SHA256)
   throw new Error("DEB packaging archive checksum mismatch: " + digest);
 

@@ -1228,13 +1228,13 @@ try {
               };
             }),
           );
-      for (const imageResult of imageResults) {
+      for (const [imageIndex, imageResult] of imageResults.entries()) {
         if (imageResult.status === "rejected") {
           const error = imageResult.reason;
           const message = error?.stack || String(error);
           const distribution =
             imageResult.reason?.distribution ||
-            imageJobs[imageResults.indexOf(imageResult)]?.distribution ||
+            imageJobs[imageIndex]?.distribution ||
             "unknown";
           imageFailures.push({
             distribution,
@@ -1648,6 +1648,7 @@ try {
       log("release report published", report.cardUrl);
     } catch (error) {
       log("release report failed", error.message);
+      process.exitCode = 1;
     }
   }
   if (!dryRun)

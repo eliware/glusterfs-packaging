@@ -48,3 +48,9 @@ test("aliases retain the image repository and replace only its tag", () => {
     "ghcr.io/eliware/centos10-gluster:latest",
   );
 });
+
+test("aliases handle registry ports and digest references", () => {
+  expect(aliasImageName("registry.example:5000/team/image@sha256:abc", "latest")).toBe(
+    "registry.example:5000/team/image:latest",
+  );
+});

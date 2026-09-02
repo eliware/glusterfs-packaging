@@ -38,6 +38,8 @@ const selinuxDir = env(
 const sourceRef = env("SOURCE_REF", config.GLUSTER_TAG);
 await mkdir(sourceDir, { recursive: true });
 await mkdir(outputDir, { recursive: true });
+for (const file of await readdir(outputDir))
+  if (file.endsWith(".rpm")) await rm(path.join(outputDir, file), { force: true });
 const sourceMainDir = env("SOURCE_MAIN_DIR");
 if (sourceMainDir) {
   if (!(await exists(path.join(sourceMainDir, ".git"))))

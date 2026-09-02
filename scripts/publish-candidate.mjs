@@ -22,6 +22,7 @@ import {
   runInteractive,
 } from "./lib.mjs";
 import { withMetadataVersion } from "./metadata-version.mjs";
+import { switchPublicationTarget } from "./publication-switch.mjs";
 
 const mode = process.argv[2] || "stable";
 const candidate = process.argv[3];
@@ -58,26 +59,8 @@ const generation = `${new Date().toISOString().replace(/[-:.]/g, "")}-${process.
 const generationRoot = path.join(publishRoot, ".generations", generation);
 const generationRecord = path.join(generationRoot, "generation.json");
 
-async function switchTarget(target, source) {
-  const next = `${target}.next`;
-  await mkdir(path.dirname(target), { recursive: true });
-  await rm(next, { recursive: true, force: true });
-  await symlink(path.relative(path.dirname(target), source), next, "dir");
-  try {
-    const current = await lstat(target);
-    if (current.isSymbolicLink()) {
-      await rename(next, target);
-      return;
-    }
-    const previousTarget = `${target}.previous-${generation}`;
-    await rename(target, previousTarget);
-    await rename(next, target);
-    await rm(previousTarget, { recursive: true, force: true });
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-    await rename(next, target);
-  }
-}
+const switchTarget = (target, source) =>
+  switchPublicationTarget(target, source, generation);
 
 async function copyRelease(source, relativeTarget) {
   const sourceTarget = path.join(generationRoot, relativeTarget);
@@ -148,7 +131,12 @@ async function removeExpiredPreviewGenerations() {
   if (mode !== "preview") return;
   const previewRoot = releaseTarget("el10/x86_64/previews");
   await mkdir(previewRoot, { recursive: true });
-  const names = (await readdir(previewRoot)).sort().reverse();
+  const names = (await readdir(previewRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
+    .map((entry) => entry.name)
+    .filter((name) => /^epel10-rolling-\d{4}\.\d{2}\.\d{2}-[0-9a-f]+$/.test(name))
+    .sort()
+    .reverse();
   const retained = new Set(names.slice(0, 30));
   for (const name of names.slice(30)) {
     await rm(path.join(previewRoot, name), { recursive: true, force: true });

@@ -145,17 +145,24 @@ const listArgs = [
   "--limit",
   "50",
   "--json",
-  "databaseId,createdAt,displayTitle",
+  "databaseId,createdAt,displayTitle,event,workflowName",
 ];
 const findRun = async () => {
   const runs = JSON.parse(
     (await runGh(listArgs, `${workflow} run list`)).stdout,
   );
   return runs
-    .filter((item) => Date.parse(item.createdAt) >= dispatchedAt - 30_000)
+    .filter(
+      (item) =>
+        Date.parse(item.createdAt) >= dispatchedAt - 30_000 &&
+        item.event === "workflow_dispatch" &&
+        item.workflowName === workflow,
+    )
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .find((candidate) =>
-      String(candidate.displayTitle || "").includes(dispatchId),
+      new RegExp(`(?:^|\\s)${dispatchId}(?:$|\\s)`).test(
+        String(candidate.displayTitle || ""),
+      ),
     );
 };
 

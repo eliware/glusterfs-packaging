@@ -25,7 +25,7 @@ glusterd --no-daemon >/var/log/gluster/glusterd-smoke.log 2>&1 &
 daemon=$!
 cleanup() { set +e; umount /mnt/gluster-smoke 2>/dev/null; gluster --mode=script volume stop smoke 2>/dev/null; gluster --mode=script volume delete smoke 2>/dev/null; kill $daemon 2>/dev/null; wait $daemon 2>/dev/null; }
 trap cleanup EXIT
-for attempt in $(seq 1 60); do gluster volume info >/dev/null 2>&1 && break; kill -0 $daemon 2>/dev/null || { cat /var/log/gluster/glusterd-smoke.log; exit 1; }; sleep 1; done
+ready=0; for attempt in $(seq 1 60); do gluster volume info >/dev/null 2>&1 && ready=1 && break; kill -0 $daemon 2>/dev/null || { cat /var/log/gluster/glusterd-smoke.log; exit 1; }; sleep 1; done; test "$ready" = 1
 gluster volume create smoke "$HOSTNAME:/var/lib/gluster/smoke-brick" force
 gluster volume start smoke
 mount -t glusterfs -o backup-volfile-servers=localhost localhost:/smoke /mnt/gluster-smoke

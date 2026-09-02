@@ -24,6 +24,20 @@ test("parses dry-run flags and valued options", () => {
   expect(result.cliArgs.get("repo-path")).toBe("/repo");
 });
 
+test("accepts legacy candidate and repository aliases", () => {
+  const result = parseConductorCliArgs([
+    "node",
+    "conductor.mjs",
+    "--dry-run",
+    "--candidate",
+    "/workspace",
+    "--repo",
+    "/publication",
+  ]);
+  expect(result.cliArgs.get("candidate")).toBe("/workspace");
+  expect(result.cliArgs.get("repo")).toBe("/publication");
+});
+
 test("parses wet-run mode and exposes stable help text", () => {
   const result = parseConductorCliArgs(["node", "conductor.mjs", "--wet-run"]);
   expect(result.dryRun).toBe(false);
@@ -35,4 +49,10 @@ test("requests help without arguments", () => {
   expect(parseConductorCliArgs(["node", "conductor.mjs"]).helpRequested).toBe(
     true,
   );
+});
+
+test("rejects unknown options explicitly", () => {
+  expect(() =>
+    parseConductorCliArgs(["node", "conductor.mjs", "--wet-rnu"]),
+  ).toThrow("unknown conductor option: --wet-rnu");
 });

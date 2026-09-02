@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -64,6 +65,30 @@ test("candidate readiness rejects changed package content", async () => {
         intervalMs: 10,
       }),
     ).rejects.toThrow("candidate file size changed");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("candidate readiness rejects manifest paths outside package directory", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "candidate-ready-"));
+  try {
+    const candidate = path.join(root, "candidate");
+    const packages = path.join(candidate, "rpm");
+    await mkdir(packages, { recursive: true });
+    await writeFile(path.join(root, "outside.rpm"), "outside\n");
+    const manifestContents = JSON.stringify({ schema: 1, package_dir: "rpm", files: [{ path: "../outside.rpm", bytes: 8, sha256: "0".repeat(64) }] });
+    await writeFile(
+      path.join(candidate, ".candidate-manifest.json"),
+      manifestContents,
+    );
+    await writeFile(
+      path.join(candidate, ".candidate-ready.json"),
+      JSON.stringify({ schema: 1, manifest: ".candidate-manifest.json", manifest_sha256: createHash("sha256").update(manifestContents).digest("hex"), file_count: 1 }),
+    );
+    await expect(
+      waitForCandidate({ candidateDir: candidate, packageDir: packages, timeoutMs: 20, intervalMs: 5 }),
+    ).rejects.toThrow("candidate manifest path escapes package directory");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

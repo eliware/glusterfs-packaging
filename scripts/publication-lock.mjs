@@ -44,6 +44,21 @@ export async function acquirePublicationLock(publishRoot) {
         existing = null;
       }
       const startedAt = Date.parse(existing?.started || "");
+      const localOwnerAlive =
+        existing?.host === os.hostname() &&
+        Number.isInteger(existing?.pid) &&
+        (() => {
+          try {
+            process.kill(existing.pid, 0);
+            return true;
+          } catch {
+            return false;
+          }
+        })();
+      if (localOwnerAlive)
+        throw new Error(
+          `publication is locked${existing ? ` by ${existing.host}:${existing.pid}` : ""}`,
+        );
       if (!Number.isFinite(startedAt) || Date.now() - startedAt < staleAfterMs)
         throw new Error(
           `publication is locked${existing ? ` by ${existing.host}:${existing.pid}` : ""}`,

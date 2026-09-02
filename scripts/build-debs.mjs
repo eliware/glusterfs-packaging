@@ -104,6 +104,8 @@ if (env("APPLY_PATCHES", "1") === "1" && (await exists(patchFile))) {
 }
 
 const archive = path.join(workspace, "debian-packaging.tar.xz");
+if (!config.DEB_PACKAGING_URL || !config.DEB_PACKAGING_SHA256)
+  throw new Error("DEB_PACKAGING_URL and DEB_PACKAGING_SHA256 are required");
 if (!(await exists(archive)))
   await runInteractive("curl", [
     "--fail",

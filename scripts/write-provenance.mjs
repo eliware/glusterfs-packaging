@@ -50,8 +50,9 @@ const walk = async (directory, prefix) => {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);
     if (entry.isDirectory()) await walk(file, `${prefix}/${entry.name}`);
-    else
+    else if (entry.isFile())
       await addFile(`${prefix}/${entry.name}`, file, `${prefix}/${entry.name}`);
+    else throw new Error(`provenance tree contains unsupported entry: ${file}`);
   }
 };
 const walkRoot = async (directory, prefix = "") => {
@@ -59,7 +60,8 @@ const walkRoot = async (directory, prefix = "") => {
     const file = path.join(directory, entry.name);
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) await walkRoot(file, relative);
-    else await addFile(relative, file, relative);
+    else if (entry.isFile()) await addFile(relative, file, relative);
+    else throw new Error(`provenance tree contains unsupported entry: ${file}`);
   }
 };
 

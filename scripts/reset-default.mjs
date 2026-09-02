@@ -161,12 +161,13 @@ await writeFile(
   `${JSON.stringify({ metadata_version: METADATA_VERSION, schema: 1, checkpoints: {}, runs: [] }, null, 2)}\n`,
 );
 
+const encodedWorkerRamdiskRoot = Buffer.from(workerRamdiskRoot).toString("base64");
 for (const host of workerHosts)
   await exec("ssh", [
     "-o",
     "BatchMode=yes",
     `${workerSshUser}@${host}`,
-    `mkdir -p '${workerRamdiskRoot}' && find '${workerRamdiskRoot}' -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +`,
+    `root=$(printf %s ${encodedWorkerRamdiskRoot} | base64 -d) && mkdir -p -- "$root" && find "$root" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +`,
   ]);
 
 await exec("systemctl", ["enable", "gluster-packaging.timer"]);

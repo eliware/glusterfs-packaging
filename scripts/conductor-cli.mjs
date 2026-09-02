@@ -6,6 +6,7 @@ const flagOptions = new Set([
   "no-rebuild",
   "wet-run",
 ]);
+const valueOptions = new Set(["gh-path", "candidate-path", "candidate", "repo-path", "repo"]);
 
 export const CONDUCTOR_HELP = `Usage: node scripts/conductor.mjs MODE [OPTIONS]
 
@@ -23,6 +24,8 @@ Options:
   --gh-path PATH            Use PATH as the gh executable or mock.
   --candidate-path PATH     Override the conductor workspace root.
   --repo-path PATH          Override the publication root.
+  --candidate PATH           Legacy alias for --candidate-path.
+  --repo PATH                Legacy alias for --repo-path.
 
 Running without arguments shows this help and performs no work.`;
 
@@ -33,6 +36,8 @@ export function parseConductorCliArgs(argv) {
     if (!argument.startsWith("--"))
       throw new Error(`unexpected conductor argument: ${argument}`);
     const name = argument.slice(2);
+    if (!flagOptions.has(name) && !valueOptions.has(name))
+      throw new Error(`unknown conductor option: --${name}`);
     if (flagOptions.has(name)) {
       cliArgs.set(name, true);
       continue;

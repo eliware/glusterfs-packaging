@@ -402,6 +402,7 @@ try {
   // single-writer operation. Keep the queue alive after a failed item so one
   // failed lane does not strand later lanes behind a rejected promise.
   let publicationQueue = Promise.resolve();
+  const publicationErrors = [];
   const enqueuePublication = (label, task) => {
     const operation = publicationQueue.then(async () => {
       log(`${label}: publication started`);
@@ -413,7 +414,13 @@ try {
       void notifyFailure(`${label} publication failed`, error, [
         { name: "Run", value: runId },
       ]);
-      log(`${label}: publication failed`, error.message || String(error));
+      publicationErrors.push({ label, error });
+      log(
+        `${label}: publication failed`,
+        [error.message, error.stderr, error.stdout]
+          .filter(Boolean)
+          .join(" | ") || String(error),
+      );
     });
     return operation;
   };
@@ -1225,7 +1232,10 @@ try {
         if (imageResult.status === "rejected") {
           const error = imageResult.reason;
           const message = error?.stack || String(error);
-          const distribution = imageResult.reason?.distribution || "unknown";
+          const distribution =
+            imageResult.reason?.distribution ||
+            imageJobs[imageResults.indexOf(imageResult)]?.distribution ||
+            "unknown";
           imageFailures.push({
             distribution,
             status: "failed",
@@ -1365,6 +1375,12 @@ try {
   };
   const results = await Promise.allSettled(lanes.map(runLane));
   await publicationQueue;
+  if (publicationErrors.length)
+    log(
+      "publication failures",
+      publicationErrors.map(({ label }) => label).join(", "),
+    );
+  if (publicationErrors.length) process.exitCode = 1;
   if (
     !dryRun &&
     results.every(

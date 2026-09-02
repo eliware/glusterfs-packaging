@@ -59,7 +59,7 @@ const coreScript = [
   "glusterd --no-daemon --pid-file=/run/glusterd-smoke.pid >/tmp/glusterd-smoke.log 2>&1 &",
   "daemon=$!",
   "trap 'kill $daemon 2>/dev/null || true' EXIT",
-  "for attempt in $(seq 1 30); do gluster --mode=script volume info >/dev/null 2>&1 && break; sleep 1; done",
+  "ready=0; for attempt in $(seq 1 30); do gluster --mode=script volume info >/dev/null 2>&1 && ready=1 && break; sleep 1; done; test \"$ready\" = 1",
   "gluster --mode=script volume create smoke $HOSTNAME:/var/lib/gluster/smoke-brick force",
   "gluster --mode=script volume start smoke",
   "mount -t glusterfs -o backup-volfile-servers=localhost localhost:/smoke /mnt/gluster-smoke",

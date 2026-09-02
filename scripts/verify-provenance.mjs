@@ -27,6 +27,10 @@ const expected = new Map(
       return [match[2], match[1]];
     }),
 );
+const listedPaths = new Set((provenance.files || []).map((file) => file.path));
+for (const file of expected.keys())
+  if (!listedPaths.has(file))
+    throw new Error(`checksum manifest contains unlisted file: ${file}`);
 for (const file of provenance.files || []) {
   // Package provenance is stored beside its record, while package payload
   // files may live in a nested RPM/DEB repository tree. Assets remain beside

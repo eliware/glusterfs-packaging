@@ -798,6 +798,29 @@ try {
     }
     const smokeWorkspace =
       candidate || path.join(workspaceRoot, runId, lane.id, "smoke-2");
+    // The local EL smoke test enables repo_gpgcheck.  Package-build jobs
+    // intentionally return an unsigned candidate, while sign-repository was
+    // previously deferred until after smoke-2, leaving repomd.xml.asc absent
+    // from the mounted test repository.  Sign and regenerate RPM metadata
+    // before smoke-2; publication repeats this idempotently and copies the
+    // signed tree into its final location.
+    if (
+      candidate &&
+      lane.format === "rpm" &&
+      !dryRun &&
+      !skipPublication
+    ) {
+      await runInteractive(
+        "node",
+        [
+          path.join(repoRoot, "scripts/sign-repository.mjs"),
+          path.join(candidate, "rpm"),
+          path.join(candidate, "rpm-stable"),
+        ],
+        { env: process.env, silent: true },
+      );
+      log(`${lane.id}: package metadata signed`, "ready for smoke-2");
+    }
     if (!smoke2.length || !packageSmoke2Complete({ smoke2 }, lane))
       smoke2 = await runPackageSmoke2({
         lane,

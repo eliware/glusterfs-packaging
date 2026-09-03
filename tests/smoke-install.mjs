@@ -17,6 +17,7 @@ const matrixFile = env(
 );
 const selectedId = env("SMOKE_OS", "");
 const resultFile = env("SMOKE_RESULT", "");
+const unsignedCandidate = env("UNSIGNED_CANDIDATE", "0") === "1";
 
 if (!(await exists(repoDir)))
   throw new Error(`repository directory does not exist: ${repoDir}`);
@@ -35,8 +36,8 @@ export LANG=C
 dnf -y install dnf-plugins-core
 %REPOSITORY_SETUP%
 dnf -y --repofrompath=eliware-glusterfs,file:///repo \\
-  --setopt=eliware-glusterfs.gpgcheck=1 \\
-  --setopt=eliware-glusterfs.repo_gpgcheck=1 \\
+  --setopt=eliware-glusterfs.gpgcheck=%GPGCHECK% \\
+  --setopt=eliware-glusterfs.repo_gpgcheck=%REPO_GPGCHECK% \\
   --enablerepo=eliware-glusterfs \\
   install glusterfs glusterfs-cli glusterfs-fuse glusterfs-server glusterfs-selinux
 
@@ -113,7 +114,10 @@ printf '__SMOKE_SELINUX__%s|%s\\n' "$selinux_status" "$selinux_detail"
 
 function commandFor(target) {
   const setup = target.repositories.join("\n");
-  const script = lifecycle.replace("%REPOSITORY_SETUP%", setup);
+  const script = lifecycle
+    .replace("%REPOSITORY_SETUP%", setup)
+    .replaceAll("%GPGCHECK%", unsignedCandidate ? "0" : "1")
+    .replaceAll("%REPO_GPGCHECK%", unsignedCandidate ? "0" : "1");
   return [
     "run",
     "--rm",

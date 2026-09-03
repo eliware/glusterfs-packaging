@@ -12,12 +12,11 @@ test("failure provenance helper receives its package candidate explicitly", asyn
   expect(source).toContain("publishedCandidate,\n              error,");
 });
 
-test("signs RPM candidate metadata before local smoke-2", async () => {
+test("keeps RPM signing after local smoke-2", async () => {
   const source = await import("node:fs/promises").then(({ readFile }) =>
     readFile("scripts/conductor.mjs", "utf8"),
   );
-  expect(source.indexOf('"scripts/sign-repository.mjs"')).toBeLessThan(
-    source.indexOf("runPackageSmoke2({"),
+  expect(source.indexOf("runPackageSmoke2({")).toBeLessThan(
+    source.indexOf('"scripts/publish-package-candidate.mjs"'),
   );
-  expect(source).toContain('log(`${lane.id}: package metadata signed`');
 });

@@ -142,6 +142,7 @@ async function runPackageSmoke2Target({
             SMOKE_RESULT: resultFile,
             CONTAINER_RUNTIME: env("CONTAINER_RUNTIME", "docker"),
             CONDUCTOR_RUN_ID: runId,
+            UNSIGNED_CANDIDATE: candidateRoot ? "1" : "0",
           },
         },
       );

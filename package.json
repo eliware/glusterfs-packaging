@@ -29,7 +29,7 @@
         "conductor": "node scripts/conductor.mjs"
     },
     "devDependencies": {
-        "@eliware/test": "^2.4.0",
+        "@eliware/test": "^3.0.0",
         "prettier": "^3.9.6",
         "puppeteer": "^25.9.0"
     },

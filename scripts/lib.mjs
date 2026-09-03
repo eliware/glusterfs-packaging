@@ -2,6 +2,7 @@ import { execFile, spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import {
   access,
+  appendFile,
   copyFile,
   mkdir,
   mkdtemp,
@@ -24,6 +25,25 @@ export const repoRoot =
 export function env(name, fallback = "") {
   return process.env[name] ?? fallback;
 }
+
+async function trace(event, fields = {}) {
+  const file = process.env.CONDUCTOR_TRACE_LOG;
+  if (!file) return;
+  try {
+    await appendFile(
+      file,
+      `${JSON.stringify({
+        timestamp: new Date().toISOString(),
+        pid: process.pid,
+        event,
+        ...fields,
+      })}\n`,
+    );
+  } catch {
+    // Diagnostics must never change the build result.
+  }
+}
+
 export function required(value, message) {
   if (!value) throw new Error(message);
   return value;
@@ -50,6 +70,8 @@ export async function copy(source, destination) {
 export async function run(command, args = [], options = {}) {
   if (options.stream) {
     return new Promise((resolve, reject) => {
+      const started = Date.now();
+      void trace("command-start", { command, args, cwd: options.cwd || process.cwd() });
       const logStream = options.logFile
         ? createWriteStream(options.logFile, { flags: "a" })
         : null;
@@ -78,6 +100,15 @@ export async function run(command, args = [], options = {}) {
       child.once("error", reject);
       child.once("exit", (code, signal) => {
         const finish = () => {
+          void trace("command-end", {
+            command,
+            args,
+            exitCode: code,
+            signal,
+            durationMs: Date.now() - started,
+            stdout,
+            stderr,
+          });
           if (code === 0) resolve({ stdout, stderr });
           else {
             const error = new Error(
@@ -95,11 +126,37 @@ export async function run(command, args = [], options = {}) {
       });
     });
   }
-  const { stdout, stderr } = await execFileAsync(command, args, {
-    cwd: options.cwd,
-    env: options.env || process.env,
-    maxBuffer: 64 * 1024 * 1024,
-    timeout: options.timeout,
+  const started = Date.now();
+  void trace("command-start", { command, args, cwd: options.cwd || process.cwd() });
+  let result;
+  try {
+    result = await execFileAsync(command, args, {
+      cwd: options.cwd,
+      env: options.env || process.env,
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: options.timeout,
+    });
+  } catch (error) {
+    await trace("command-end", {
+      command,
+      args,
+      exitCode: error.code,
+      signal: error.signal,
+      durationMs: Date.now() - started,
+      stdout: error.stdout || "",
+      stderr: error.stderr || "",
+      error: error.message,
+    });
+    throw error;
+  }
+  const { stdout, stderr } = result;
+  await trace("command-end", {
+    command,
+    args,
+    exitCode: 0,
+    durationMs: Date.now() - started,
+    stdout,
+    stderr,
   });
   if (options.capture) return { stdout, stderr };
   if (stdout) process.stdout.write(stdout);
@@ -111,6 +168,8 @@ export function runInteractive(command, args = [], options = {}) {
   const suppress = options.suppress || [];
   const filtered = suppress.length > 0 || options.logFile || options.silent;
   return new Promise((resolve, reject) => {
+    const started = Date.now();
+    void trace("command-start", { command, args, cwd: options.cwd || process.cwd() });
     const buffers = { stdout: "", stderr: "" };
     const logStream = options.logFile
       ? createWriteStream(options.logFile, { flags: "a" })
@@ -150,7 +209,14 @@ export function runInteractive(command, args = [], options = {}) {
       error.args = args;
       error.stdout = buffers.stdout;
       error.stderr = buffers.stderr;
-      reject(error);
+      void trace("command-end", {
+        command,
+        args,
+        durationMs: Date.now() - started,
+        error: error.message,
+        stdout: buffers.stdout,
+        stderr: buffers.stderr,
+      }).finally(() => reject(error));
     });
     child.once("exit", (code, signal) => {
       if (filtered && !options.silent) {
@@ -159,6 +225,15 @@ export function runInteractive(command, args = [], options = {}) {
             (name === "stdout" ? process.stdout : process.stderr).write(buffer);
       }
       const finish = () => {
+        void trace("command-end", {
+          command,
+          args,
+          exitCode: code,
+          signal,
+          durationMs: Date.now() - started,
+          stdout: buffers.stdout,
+          stderr: buffers.stderr,
+        });
         if (code === 0) resolve({ stdout: buffers.stdout, stderr: buffers.stderr });
         else {
           const commandLine = [command, ...args].join(" ");

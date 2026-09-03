@@ -2,6 +2,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import {
+  appendFile,
   mkdir,
   readFile,
   writeFile,
@@ -172,6 +173,10 @@ try {
   const runId = `${compactTimestamp()}-${crypto.randomUUID().slice(0, 8)}`;
   statusDirectory = path.join(stateRoot, "status", runId);
   await mkdir(statusDirectory, { recursive: true });
+  process.env.CONDUCTOR_TRACE_LOG = path.join(
+    statusDirectory,
+    "conductor.trace.jsonl",
+  );
   conductorStatus = createConductorStatus({
     directory: statusDirectory,
     runId,
@@ -903,16 +908,38 @@ try {
     });
     if (candidate && !dryRun && !skipPublication) {
       await enqueuePublication(lane.id, async () => {
-        await runInteractive(
-          "node",
-          [
-            path.join(repoRoot, "scripts/publish-package-candidate.mjs"),
-            lane.channel,
-            `${lane.id}-${lane.version}`,
-            candidate,
-          ],
-          { env: process.env, silent: true },
+        const publicationLog = path.join(
+          candidate,
+          "assets",
+          "publication.log",
         );
+        try {
+          await runInteractive(
+            "node",
+            [
+              path.join(repoRoot, "scripts/publish-package-candidate.mjs"),
+              lane.channel,
+              `${lane.id}-${lane.version}`,
+              candidate,
+            ],
+            {
+              env: {
+                ...process.env,
+                PUBLICATION_DEBUG_LOG: publicationLog,
+              },
+              silent: true,
+              logFile: publicationLog,
+            },
+          );
+        } catch (error) {
+          await appendFile(
+            publicationLog,
+            `[conductor] ${new Date().toISOString()} publication failed exit=${error.code ?? "unknown"} signal=${error.signal ?? "none"}\n` +
+              `command=${error.command ?? "node"} ${(error.args ?? []).join(" ")}\n` +
+              `stderr=${error.stderr || "<empty>"}\nstdout=${error.stdout || "<empty>"}\n`,
+          ).catch(() => {});
+          throw error;
+        }
       });
       log(`${lane.id}: packages published`);
     } else if (!packageCheckpoint)

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { exists, env, repoRoot, runInteractive } from "./lib.mjs";
-import { readFile, writeFile } from "node:fs/promises";
+import { appendFile, readFile, writeFile } from "node:fs/promises";
 import {
   assertValidationRecord,
   markPublicationVerified,
@@ -14,12 +14,22 @@ if (!mode || !candidate || !candidateRoot)
   throw new Error(
     "usage: publish-package-candidate.mjs stable|preview ID CANDIDATE_DIR",
   );
+const debugLog = env("PUBLICATION_DEBUG_LOG", "");
+const diagnostic = async (message) => {
+  if (!debugLog) return;
+  await appendFile(
+    debugLog,
+    `[publish-package-candidate] ${new Date().toISOString()} ${message}\n`,
+  );
+};
+await diagnostic(`start mode=${mode} candidate=${candidate} root=${candidateRoot}`);
 const rpmDir = path.join(candidateRoot, "rpm");
 const debRoot = path.join(candidateRoot, "deb");
 const hasRpm = await exists(rpmDir);
 const hasDeb = await exists(debRoot);
 if (!hasRpm && !hasDeb)
   throw new Error(`candidate has no packages: ${candidateRoot}`);
+await diagnostic(`inputs rpm=${hasRpm ? rpmDir : "none"} deb=${hasDeb ? debRoot : "none"}`);
 let result = {};
 try {
   result = JSON.parse(
@@ -27,7 +37,8 @@ try {
   );
 } catch {}
 const packageFormat = result.package_format || (hasRpm ? "rpm" : "deb");
-if (hasRpm)
+if (hasRpm) {
+  await diagnostic(`signing RPM repository ${rpmDir}`);
   await runInteractive(
     "node",
     [
@@ -37,7 +48,10 @@ if (hasRpm)
     ],
     { env: process.env },
   );
-if (hasDeb)
+  await diagnostic(`RPM repository signing complete ${path.join(candidateRoot, "rpm-stable")}`);
+}
+if (hasDeb) {
+  await diagnostic(`signing APT repository ${debRoot}`);
   await runInteractive(
     "node",
     [path.join(repoRoot, "scripts/sign-apt-repositories.mjs"), debRoot],
@@ -48,6 +62,8 @@ if (hasDeb)
       },
     },
   );
+  await diagnostic("APT repository signing complete");
+}
 const packageRoot = hasRpm
   ? rpmDir
   : path.join(
@@ -109,6 +125,7 @@ if (await exists(validationAsset))
 const smoke2Asset = path.join(candidateRoot, "smoke-2.json");
 if (await exists(smoke2Asset))
   provenanceArgs[1].push("--asset", "package-smoke-2", smoke2Asset);
+await diagnostic(`writing package provenance packageRoot=${packageRoot}`);
 await runInteractive(provenanceArgs[0], provenanceArgs[1], {
   env: process.env,
 });
@@ -118,11 +135,13 @@ await runInteractive("node", [
   "--tree-root",
   packageRoot,
 ]);
+await diagnostic("provenance verification complete");
 const publishedCandidate = mode === "preview" ? candidate : "stable";
 const provenanceUrl =
   packageFormat === "rpm"
     ? `/el10/x86_64/${mode === "preview" ? `previews/${publishedCandidate}` : "stable"}/provenance.json`
     : `/${result.distribution}/${result.suite}/amd64/${mode === "preview" ? `previews/${publishedCandidate}` : "stable"}/provenance.json`;
+await diagnostic(`publishing candidate to repository mode=${mode}`);
 await runInteractive(
   "node",
   [
@@ -150,4 +169,5 @@ await runInteractive(
     },
   },
 );
+await diagnostic("repository publication complete");
 console.log(`Published ${mode} package candidate ${candidate}`);

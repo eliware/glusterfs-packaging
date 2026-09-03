@@ -35,8 +35,8 @@ export LANG=C
 dnf -y install dnf-plugins-core
 %REPOSITORY_SETUP%
 dnf -y --repofrompath=eliware-glusterfs,file:///repo \\
-  --setopt=eliware-glusterfs.gpgcheck=0 \\
-  --setopt=eliware-glusterfs.repo_gpgcheck=0 \\
+  --setopt=eliware-glusterfs.gpgcheck=1 \\
+  --setopt=eliware-glusterfs.repo_gpgcheck=1 \\
   --enablerepo=eliware-glusterfs \\
   install glusterfs glusterfs-cli glusterfs-fuse glusterfs-server glusterfs-selinux
 

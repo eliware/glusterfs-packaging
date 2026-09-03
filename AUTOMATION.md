@@ -59,8 +59,9 @@ For each incomplete lane, the conductor follows this sequence:
    checkpoints.
 
 Smoke-2 is serialized by a local lock to protect the development machine.
-Image build, Smoke-3, and publication are likewise serialized by a local image
-lock. Independent lanes may still be planned and package builders may run
+Image build, Smoke-3, and local image publication are likewise serialized by a
+local image lock; metadata publication uses the separate publication queue.
+Independent lanes may still be planned and package builders may run
 concurrently on ARC. A failure affects only the affected lane; successful lanes
 may complete and publish independently.
 

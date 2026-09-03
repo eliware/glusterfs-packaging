@@ -1,14 +1,19 @@
 {
     "name": "glusterfs-packaging",
     "version": "0.1.0",
-    "description": "Reproducible GlusterFS package builds, repository publishing, and release provenance.",
+    "description": "Reproducible GlusterFS package builds, signed repositories, runtime images, and release provenance.",
     "keywords": [
         "glusterfs",
         "rpm",
         "dnf",
         "centos",
         "repository",
-        "packaging"
+        "packaging",
+        "debian",
+        "ubuntu",
+        "containers",
+        "provenance",
+        "release-automation"
     ],
     "type": "module",
     "main": "scripts/conductor.mjs",
@@ -17,17 +22,14 @@
         "check:scripts": "node scripts/check-syntax.mjs",
         "format": "prettier --write scripts tests containers package.json",
         "format:check": "prettier --check scripts tests containers package.json",
-        "test": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --detectOpenHandles --silent --runInBand --coverage",
-        "audit": "npm audit --omit=dev --audit-level=moderate",
-        "coverage": "npx --node-options=\"--experimental-vm-modules --no-warnings\" jest --detectOpenHandles --coverage --runInBand",
-        "lint": "oxlint .",
-        "test:gaps": "npm test 2>&1 | grep '|' | grep -vF '|     100 |      100 |     100 |     100 |'",
+        "test": "eliware-test --ignore-100x4",
+        "audit": "npm audit --omit=dev --audit-level=moderate --ignore-scripts",
+        "lint": "eliware-test --lint",
         "verify:provenance": "node scripts/verify-provenance.mjs",
         "conductor": "node scripts/conductor.mjs"
     },
     "devDependencies": {
-        "jest": "^30.4.2",
-        "oxlint": "^1.78.0",
+        "@eliware/test": "^2.3.1",
         "prettier": "^3.9.6",
         "puppeteer": "^25.8.0"
     },
@@ -38,10 +40,12 @@
             "**/?(*.)+(spec|test).mjs",
             "**/?(*.)+(spec|test).cjs"
         ],
-        "setupFiles": ["<rootDir>/tests/setup.mjs"]
+        "setupFiles": [
+            "<rootDir>/tests/setup.mjs"
+        ]
     },
     "engines": {
-        "node": ">=20"
+        "node": ">=26"
     },
     "repository": {
         "type": "git",

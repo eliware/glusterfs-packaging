@@ -9,7 +9,6 @@ import {
   readdir,
   rename,
   rm,
-  symlink,
   writeFile,
 } from "node:fs/promises";
 import { acquirePublicationLock } from "./publication-lock.mjs";
@@ -103,6 +102,8 @@ async function removeMisplacedDebPreview() {
     const allowed = new Set(["metadata.json"]);
     if (contents.length && contents.every((name) => allowed.has(name)))
       await rm(misplaced, { recursive: true, force: true });
+    else if (contents.length)
+      throw new Error(`unexpected files in misplaced DEB preview: ${misplaced}`);
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }

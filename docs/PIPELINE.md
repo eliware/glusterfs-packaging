@@ -54,8 +54,9 @@ conductor state directory:
 - `local-image-build.lock` permits only one local image build/smoke/publish
   operation at a time.
 
-These locks also serialize concurrent lanes within one conductor process,
-recover stale ownership after a crashed process, and are released in `finally`
+The image lock serializes local image operations within one conductor process;
+the publication queue serializes metadata writes. Both recover stale ownership
+after a crashed process and are released in `finally`
 blocks. They protect the development VM from concurrent Docker, package,
 mount, and image workloads.
 

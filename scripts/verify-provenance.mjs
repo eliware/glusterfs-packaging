@@ -28,15 +28,27 @@ const expected = new Map(
     }),
 );
 const listedPaths = new Set((provenance.files || []).map((file) => file.path));
+const safePath = (value) => {
+  if (!value || path.isAbsolute(value) || value.includes("\\"))
+    throw new Error(`invalid provenance path: ${value}`);
+  const normalized = path.posix.normalize(value);
+  if (normalized === "." || normalized.startsWith("../") || normalized.includes("/../"))
+    throw new Error(`invalid provenance path: ${value}`);
+  return normalized;
+};
 for (const file of expected.keys())
-  if (!listedPaths.has(file))
+  if (!listedPaths.has(file) || safePath(file) !== file)
     throw new Error(`checksum manifest contains unlisted file: ${file}`);
 for (const file of provenance.files || []) {
+  const relativePath = safePath(file.path);
   // Package provenance is stored beside its record, while package payload
   // files may live in a nested RPM/DEB repository tree. Assets remain beside
   // the record and all other paths are resolved from the supplied tree root.
-  const fileRoot = file.path.startsWith("assets/") ? directory : treeRoot;
-  const filePath = path.join(fileRoot, file.path);
+  const fileRoot = relativePath.startsWith("assets/") ? directory : treeRoot;
+  const filePath = path.resolve(fileRoot, relativePath);
+  const relativeToRoot = path.relative(path.resolve(fileRoot), filePath);
+  if (relativeToRoot.startsWith("..") || path.isAbsolute(relativeToRoot))
+    throw new Error(`provenance path escapes root: ${file.path}`);
   const info = await stat(filePath);
   const digest = createHash("sha256")
     .update(await readFile(filePath))
@@ -54,7 +66,10 @@ try {
   await stat(signature);
   await run("gpg", ["--batch", "--verify", signature, provenanceFile]);
 } catch (error) {
-  if (process.env.ALLOW_UNSIGNED_PROVENANCE === "1")
+  if (
+    process.env.ALLOW_UNSIGNED_PROVENANCE === "1" &&
+    process.env.PROVENANCE_MODE === "development"
+  )
     console.warn(`Signature verification skipped: ${error.message}`);
   else throw error;
 }

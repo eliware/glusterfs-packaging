@@ -3,7 +3,8 @@
 ## Scope
 
 This repository contains reproducible GlusterFS package builds, release
-metadata, a repository HTTP application, and publication tooling. Milestone
+metadata, and publication tooling. The companion HTTP application is maintained
+in `eliware/gluster-http`. Milestone
 one covers the latest stable GlusterFS release and rolling previews for the
 supported RPM and DEB distributions.
 
@@ -41,18 +42,20 @@ supported RPM and DEB distributions.
 - Keep at most 30 rolling preview repositories in the published repository.
 - Treat all signing material and registry credentials as external secret
   configuration; never place them in Git or an image build context.
-- Keep the HTTP server source in `src/` and the public templates in
-  `templates/`. Do not introduce a dependency on another application or
-  deployment repository.
+- Keep the HTTP service boundary documented as an external companion project;
+  do not add HTTP application source or templates to this repository.
 - Keep Node project metadata and the lockfile at the repository root. Do not
   commit the root `node_modules/` directory.
 
 ## Validation
 
 ```sh
-node --check src/be/server.mjs
+npm ci
+npm run check
 npm test
 npm run lint
+npm run audit
+npm pack --dry-run
 docker build -f containers/centos10-builder.Dockerfile .
 node scripts/build-workspace.mjs
 node scripts/make-repository.mjs

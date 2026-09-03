@@ -14,6 +14,8 @@ export function catalogRepositoryLinks({
   const releasePath =
     channel === "preview" ? `previews/${candidate}` : "stable";
   if (packageFormat === "rpm") {
+    if (!["epel10", "centos-stream", "rocky", "alma", "oracle"].includes(distribution))
+      throw new Error(`unsupported RPM distribution: ${distribution}`);
     const rpm = `/el10/x86_64/${releasePath}/`;
     return { rpm_repo: rpm, repositories: { rpm } };
   }

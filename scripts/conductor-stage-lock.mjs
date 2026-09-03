@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { env } from "./lib.mjs";
 import { isoTimestamp, parseJson, stringifyJson } from "./serialization.mjs";
 
@@ -27,6 +27,13 @@ export function createLocalStageLock({ stateRoot, log }) {
               if (ownerError.code === "ESRCH" || ownerError.code === "ENOENT") {
                 await rm(stageLock, { recursive: true, force: true });
                 continue;
+              }
+              if (ownerError instanceof SyntaxError) {
+                const age = Date.now() - (await stat(stageLock)).mtimeMs;
+                if (age > Number(env("CONDUCTOR_LOCAL_LOCK_STALE_MS", "120000"))) {
+                  await rm(stageLock, { recursive: true, force: true });
+                  continue;
+                }
               }
               throw ownerError;
             }

@@ -3,7 +3,8 @@
  * Destructive recovery utility.
  *
  * This completely wipes the published repository contents, generated metadata,
- * conductor checkpoints, build workspaces, and dedicated worker ramdisks. It
+ * conductor checkpoints and build workspaces. Worker ramdisks are ephemeral
+ * and are cleared by the worker restart lifecycle.
  * preserves the six persistent lane ccache directories unless
  * RESET_CLEAR_CCACHE=1 is set. It preserves only the seed generation,
  * repository bootstrap file, and signing key in publication storage. It does
@@ -27,7 +28,7 @@ if (!process.argv.includes("--force")) {
     "WARNING: reset-default completely wipes the published repository and all generated metadata.",
   );
   console.error(
-    "It also wipes conductor checkpoints, build workspaces, and dedicated worker ramdisks.",
+    "It also wipes conductor checkpoints and build workspaces.",
   );
   console.error(
     "Persistent lane ccaches are preserved unless RESET_CLEAR_CCACHE=1 is set.",
@@ -42,9 +43,6 @@ if (!process.argv.includes("--force")) {
   console.error("  RESET_PUBLICATION_ROOT=/path/to/publication-root");
   console.error("  RESET_WORKSPACE_ROOT=/path/to/workspace-root");
   console.error("  RESET_CONDUCTOR_ROOT=/path/to/conductor-state");
-  console.error("  RESET_WORKER_HOSTS=worker-a,worker-b,worker-c");
-  console.error("  RESET_SSH_USER=operator");
-  console.error("  RESET_WORKER_RAMDISK_ROOT=/path/to/ramdisk-build-root");
   console.error(
     "  RESET_CLEAR_CCACHE=1  # optional: also clear all six lane caches",
   );
@@ -53,9 +51,6 @@ if (!process.argv.includes("--force")) {
   console.error("  RESET_PUBLICATION_ROOT=/path/to/publication-root \\");
   console.error("  RESET_WORKSPACE_ROOT=/path/to/workspace-root \\");
   console.error("  RESET_CONDUCTOR_ROOT=/path/to/conductor-state \\");
-  console.error("  RESET_WORKER_HOSTS=worker-a,worker-b,worker-c \\");
-  console.error("  RESET_SSH_USER=operator \\");
-  console.error("  RESET_WORKER_RAMDISK_ROOT=/path/to/ramdisk-build-root \\");
   console.error("  RESET_CLEAR_CCACHE=1 \\");
   console.error("  node scripts/reset-default.mjs --force");
   process.exit(2);
@@ -65,12 +60,6 @@ const exec = promisify(execFile);
 const publicationRoot = requiredEnv("RESET_PUBLICATION_ROOT");
 const workspaceRoot = requiredEnv("RESET_WORKSPACE_ROOT");
 const conductorRoot = requiredEnv("RESET_CONDUCTOR_ROOT");
-const workerHosts = requiredEnv("RESET_WORKER_HOSTS")
-  .split(",")
-  .map((host) => host.trim())
-  .filter(Boolean);
-const workerSshUser = requiredEnv("RESET_SSH_USER");
-const workerRamdiskRoot = requiredEnv("RESET_WORKER_RAMDISK_ROOT");
 const clearCcache = process.env.RESET_CLEAR_CCACHE === "1";
 const laneIds = new Set([
   "epel10-stable",
@@ -160,15 +149,6 @@ await writeFile(
   `${conductorRoot}/state.json`,
   `${JSON.stringify({ metadata_version: METADATA_VERSION, schema: 1, checkpoints: {}, runs: [] }, null, 2)}\n`,
 );
-
-const encodedWorkerRamdiskRoot = Buffer.from(workerRamdiskRoot).toString("base64");
-for (const host of workerHosts)
-  await exec("ssh", [
-    "-o",
-    "BatchMode=yes",
-    `${workerSshUser}@${host}`,
-    `root=$(printf %s ${encodedWorkerRamdiskRoot} | base64 -d) && mkdir -p -- "$root" && find "$root" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +`,
-  ]);
 
 await exec("systemctl", ["enable", "gluster-packaging.timer"]);
 await exec("systemctl", ["reset-failed", "gluster-packaging.service"]);

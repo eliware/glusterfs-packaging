@@ -7,9 +7,15 @@ import { catalogRepositoryLinks } from "./catalog-repositories.mjs";
 import { assertValidationRecord } from "./validation-schema.mjs";
 import { packagePublicationRelativePath } from "./publication-paths.mjs";
 const args = new Map();
-for (let i = 2; i < process.argv.length; i++)
-  if (process.argv[i].startsWith("--"))
-    args.set(process.argv[i].slice(2), process.argv[++i]);
+for (let i = 2; i < process.argv.length; i++) {
+  const option = process.argv[i];
+  if (!option.startsWith("--")) throw new Error(`unexpected argument: ${option}`);
+  const name = option.slice(2);
+  const value = process.argv[++i];
+  if (!value || value.startsWith("--")) throw new Error(`missing value for --${name}`);
+  if (args.has(name)) throw new Error(`duplicate option: --${name}`);
+  args.set(name, value);
+}
 const required = (key) => {
   const value = args.get(key);
   if (!value) throw new Error(`missing --${key}`);

@@ -1,4 +1,4 @@
-# [![eliware.org](https://eliware.org/logos/brand.png)](https://eliware.org)
+# [![eliware.org](https://eliware.org/logos/brand.png)](https://discord.gg/M6aTR9eTwN)
 
 ## GlusterFS Packaging
 
@@ -6,10 +6,23 @@ Reproducible GlusterFS package builds, signed repositories, runtime images, and
 provenance records maintained by Eliware.
 
 [![license](https://img.shields.io/github/license/eliware/glusterfs-packaging.svg)](LICENSE)
-[![build status](https://github.com/eliware/glusterfs-packaging/actions/workflows/ci.yml/badge.svg)](https://github.com/eliware/glusterfs-packaging/actions/workflows/ci.yml)
+[![build status](https://github.com/eliware/glusterfs-packaging/actions/workflows/nodejs.yml/badge.svg)](https://github.com/eliware/glusterfs-packaging/actions/workflows/nodejs.yml)
 
 The public repository and release catalog are available at
 [glusterfs.eliware.org](https://glusterfs.eliware.org/).
+
+## Table of Contents
+
+- [Current status](#current-status)
+- [What this repository produces](#what-this-repository-produces)
+- [Release pipeline](#release-pipeline)
+- [Metadata and provenance](#metadata-and-provenance)
+- [Repository website integration](#repository-website-integration)
+- [Development](#development)
+- [Security boundaries](#security-boundaries)
+- [Project layout](#project-layout)
+- [Support](#support)
+- [Links](#links)
 
 ## Current status
 
@@ -124,14 +137,15 @@ See [`docs/METADATA.md`](docs/METADATA.md) and
 
 The separate `eliware/gluster-http` repository serves the published package
 repositories, release metadata, provenance records, and shared-storage blog
-posts. This project remains the source of truth for the package, image,
-metadata, and provenance contracts that the HTTP service adapts.
+posts. Those HTTP-service features and their tests are maintained there; this
+project is the source of truth for the package, image, metadata, and provenance
+contracts that the HTTP service adapts.
 
 ## Development
 
 ### Requirements
 
-- Node.js 26 or newer and npm.
+- Node.js 20 or newer and npm.
 - Git, Docker, GPG, native RPM/DEB tooling, and the relevant build container
   tools for package development.
 - Chromium/Chrome and the Eliware branding asset are required for wet-run

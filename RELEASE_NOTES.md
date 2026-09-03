@@ -121,7 +121,8 @@ infrastructure outside the repository.
   deployment health checks.
 - Provides blog listing and article routes, a JSON API, and an RSS feed.
 - Reads blog JSON from the shared publication volume at runtime, allowing
-  blog posts to be added or updated without rebuilding the HTTP image.
+  blog posts to be added or updated in the companion HTTP repository without
+  rebuilding its image.
 - Bundles and serves the frontend assets through webpack while retaining
   readable source modules and source maps for development.
 

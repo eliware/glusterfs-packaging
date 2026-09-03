@@ -91,6 +91,7 @@ let statusDirectory = "";
 let conductorStatus;
 let completedNoOp = false;
 let completedSuccessfully = false;
+let publicationValidationFailed = false;
 const log = (message, details = "") => {
   const suffix = details ? ` ${details}` : "";
   console.log(`[conductor] ${message}${suffix}`);
@@ -952,7 +953,8 @@ try {
         packageRecord,
       );
       const rpmRepoUrl = `${repositoryBase}${packageRepository}`;
-      const debRepository = () => `${repositoryBase}${packageRepository}`;
+      const debRepository = (distribution, suite) =>
+        `${repositoryBase}/${distribution}/${suite}/amd64/${lane.channel === "preview" ? `previews/${lane.id}-${lane.version}` : "stable"}/`;
       let publishedRpmMetadataSha256;
       if (!skipPublication) {
         const publishedMetadata = packageCheckpoint?.published_root
@@ -1465,6 +1467,7 @@ try {
       await rebuildPublishedCatalog();
     } catch (error) {
       log("catalog rebuild failed", error.message);
+      publicationValidationFailed = true;
       await notifyFailure("Catalog rebuild failed", error, [
         { name: "Run", value: runId },
       ]);
@@ -1565,6 +1568,7 @@ try {
       await reconcileCatalog();
     } catch (error) {
       log("catalog reconciliation failed", error.message);
+      publicationValidationFailed = true;
       await notifyFailure("Catalog reconciliation failed", error, [
         { name: "Run", value: runId },
       ]);
@@ -1576,6 +1580,7 @@ try {
       await validateFinalPublication();
     } catch (error) {
       log("final publication validation failed", error.message);
+      publicationValidationFailed = true;
       await notifyFailure("Final publication validation failed", error, [
         { name: "Run", value: runId },
       ]);
@@ -1654,12 +1659,12 @@ try {
   if (!dryRun)
     await notifyConductor({
       title: "Conductor run completed",
-      description: results.some((result) => result.status === "rejected")
+      description: publicationValidationFailed || results.some((result) => result.status === "rejected")
         ? "The release run completed with one or more failed lanes."
         : results.some((result) => result.status === "partial")
           ? "The release run completed with one or more failed optional image targets."
           : "The release run completed successfully; existing checkpoints were reused.",
-      status: results.some((result) => result.status === "rejected")
+      status: publicationValidationFailed || results.some((result) => result.status === "rejected")
         ? "failure"
         : results.some((result) => result.status === "partial")
           ? "warning"
@@ -1733,6 +1738,9 @@ try {
     await notifyFailure("Docker Hub preflight failed", error);
     process.exitCode = 1;
   } else {
+    await notifyFailure("Conductor failed", error).catch((notifyError) =>
+      log("fatal failure notification failed", notifyError.message),
+    );
     throw error;
   }
 } finally {

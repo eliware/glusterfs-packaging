@@ -159,8 +159,8 @@ const findRun = async () => {
     )
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .find((candidate) =>
-      new RegExp(`(?:^|\\s)${dispatchId}(?:$|\\s)`).test(
-        `${candidate.displayTitle || ""} ${candidate.name || ""}`,
+      `${candidate.displayTitle || ""} ${candidate.name || ""}`.includes(
+        dispatchId,
       ),
     );
 };

@@ -29,9 +29,9 @@
         "conductor": "node scripts/conductor.mjs"
     },
     "devDependencies": {
-        "@eliware/test": "^2.3.1",
+        "@eliware/test": "^2.4.0",
         "prettier": "^3.9.6",
-        "puppeteer": "^25.8.0"
+        "puppeteer": "^25.9.0"
     },
     "jest": {
         "testEnvironment": "node",
@@ -64,6 +64,6 @@
         "unrs-resolver": false
     },
     "dependencies": {
-        "@eliware/discord-webhook": "^1.1.8"
+        "@eliware/discord-webhook": "^2.0.0"
     }
 }

@@ -88,7 +88,7 @@ Use a direct dry run to inspect discovery, checkpoint decisions, and planned
 lane transitions without dispatching workflows or publishing artifacts:
 
 ```sh
-cd /opt/gluster-packaging
+cd <project-root>
 node scripts/conductor.mjs --dry-run
 ```
 

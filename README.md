@@ -1,5 +1,7 @@
 # [![eliware.org](https://eliware.org/logos/brand.png)](https://discord.gg/M6aTR9eTwN)
 
+Documentation: [docs](docs/README.md) · [specifications](specs/README.md) · [examples](examples/README.md)
+
 ## GlusterFS Packaging
 
 Reproducible GlusterFS package builds, signed repositories, runtime images, and

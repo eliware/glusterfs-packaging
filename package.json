@@ -65,5 +65,20 @@
     },
     "dependencies": {
         "@eliware/discord-webhook": "^2.0.0"
+    },
+    "prettier": {
+      "printWidth": 100,
+      "tabWidth": 2,
+      "useTabs": false,
+      "semi": true,
+      "singleQuote": false,
+      "quoteProps": "as-needed",
+      "jsxSingleQuote": false,
+      "trailingComma": "all",
+      "bracketSpacing": true,
+      "bracketSameLine": false,
+      "arrowParens": "always",
+      "proseWrap": "preserve",
+      "endOfLine": "lf"
     }
 }

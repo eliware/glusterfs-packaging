@@ -82,6 +82,7 @@
       "endOfLine": "lf"
     },
     "eliware": {
+      "id": "E-7002",
       "apply": ["general", "application"]
     }
 }

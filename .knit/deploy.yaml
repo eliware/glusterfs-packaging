@@ -9,4 +9,3 @@ on:
           - git pull --ff-only origin main
           - npm ci
           - npm test
-          - .knit/ci.sh

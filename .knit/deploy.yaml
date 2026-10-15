@@ -3,8 +3,10 @@ on:
   push:
     deployments:
       - target: dev
-        cwd: /opt/gluster-packaging
+        cwd: /eliware/glusterfs-packaging
         timeoutMs: 300000
         commands:
-          - git pull --ff-only
+          - git pull --ff-only origin main
+          - npm ci
+          - npm test
           - .knit/ci.sh

@@ -1,10 +1,10 @@
 [Unit]
 Description=GlusterFS packaging conductor
-ConditionPathIsDirectory=/opt/gluster-packaging
+ConditionPathIsDirectory=/eliware/glusterfs-packaging
 
 [Service]
 Type=oneshot
 User=root
 EnvironmentFile=-/etc/gluster-packaging/release.env
-Environment=CONDUCTOR_REPOSITORY_COMMIT_SCRIPT=/opt/gluster-packaging/scripts/commit-publish-repository.mjs
-ExecStart=/usr/bin/node /opt/gluster-packaging/scripts/conductor-service.mjs
+Environment=CONDUCTOR_REPOSITORY_COMMIT_SCRIPT=/eliware/glusterfs-packaging/scripts/commit-publish-repository.mjs
+ExecStart=/usr/bin/node /eliware/glusterfs-packaging/scripts/conductor-service.mjs

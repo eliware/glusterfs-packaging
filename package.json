@@ -22,7 +22,7 @@
         "check:scripts": "node scripts/check-syntax.mjs",
         "format": "prettier --write scripts tests containers package.json",
         "format:check": "prettier --check scripts tests containers package.json",
-        "test": "eliware-test --ignore-100x4",
+        "test": "eliware-test",
         "audit": "npm audit --omit=dev --audit-level=moderate --ignore-scripts",
         "lint": "eliware-test --lint",
         "verify:provenance": "node scripts/verify-provenance.mjs",
@@ -30,8 +30,8 @@
     },
     "devDependencies": {
         "@eliware/test": "^5.0.0",
-        "prettier": "^3.9.6",
-        "puppeteer": "^25.9.0"
+        "prettier": "^3.9.10",
+        "puppeteer": "^25.16.0"
     },
     "jest": {
         "testEnvironment": "node",
@@ -64,7 +64,7 @@
         "unrs-resolver": false
     },
     "dependencies": {
-        "@eliware/discord-webhook": "^2.0.0"
+        "@eliware/discord-webhook": "^15.0.1"
     },
     "prettier": {
       "printWidth": 100,

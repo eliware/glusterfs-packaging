@@ -65,12 +65,17 @@ try {
 
   const stagedAssets = path.join(stage, "assets");
   await mkdir(stagedAssets, { recursive: true });
+  const suppliedAssetNames = new Set(
+    suppliedAssets.map(([, file]) => path.basename(file)),
+  );
   try {
-    for (const name of await readdir(path.join(outputDir, "assets")))
-      await cp(
-        path.join(outputDir, "assets", name),
-        path.join(stagedAssets, name),
-      );
+    for (const name of await readdir(path.join(outputDir, "assets"))) {
+      if (name !== "publication.log" && !suppliedAssetNames.has(name))
+        await cp(
+          path.join(outputDir, "assets", name),
+          path.join(stagedAssets, name),
+        );
+    }
   } catch {}
   for (const [label, file] of suppliedAssets) {
     if (!label || !file) throw new Error("--asset requires LABEL FILE");

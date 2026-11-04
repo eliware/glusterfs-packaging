@@ -878,7 +878,7 @@ try {
       await enqueuePublication(lane.id, async () => {
         const publicationLog = path.join(
           candidate,
-          "assets",
+          "logs",
           "publication.log",
         );
         await mkdir(path.dirname(publicationLog), { recursive: true });

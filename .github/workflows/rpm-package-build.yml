@@ -55,7 +55,8 @@ jobs:
             status=$?
             trap - EXIT INT TERM
             mkdir -p "$PERSISTENT_CCACHE"
-            if ! cp -a "$RAM_CCACHE"/. "$PERSISTENT_CCACHE"/; then
+            if ! cp -R --no-preserve=mode,ownership,timestamps \
+              "$RAM_CCACHE"/. "$PERSISTENT_CCACHE"/; then
               echo "Failed to synchronize ccache to $PERSISTENT_CCACHE"
               [ "$status" -eq 0 ] && status=1
             fi
@@ -67,7 +68,8 @@ jobs:
           rm -rf -- "$RAM_ROOT"
           mkdir -p "$RAM_ROOT" "$OUTPUT_DIR_RAM" "$RAM_CCACHE" "$(dirname "$BUILD_LOG")"
           if [ -d "$PERSISTENT_CCACHE" ]; then
-            cp -a "$PERSISTENT_CCACHE"/. "$RAM_CCACHE"/
+            cp -R --no-preserve=mode,ownership,timestamps \
+              "$PERSISTENT_CCACHE"/. "$RAM_CCACHE"/
           fi
           ccache --max-size=1G
           export CCACHE_DIR="$RAM_CCACHE"

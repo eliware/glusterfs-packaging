@@ -62,6 +62,11 @@ import { createConductorConfig } from "./conductor-config.mjs";
 import { logPlannedImages } from "./conductor-image-plan.mjs";
 import { createLocalStageLock } from "./conductor-stage-lock.mjs";
 import { dockerAuthFile } from "./docker-hub-auth.mjs";
+import {
+  assertFloatingBaseImageReferences,
+  DEFAULT_BASE_IMAGES,
+  resolveBaseImageDigests,
+} from "./base-image-inputs.mjs";
 import { isImageCheckpointValid } from "./image-checkpoint.mjs";
 import { publicationFile } from "./publication-paths.mjs";
 import { validatePublishedArtifacts } from "./conductor-final-validation.mjs";
@@ -281,18 +286,10 @@ try {
   const baseImages = JSON.parse(
     env(
       "CONDUCTOR_BASE_IMAGES_JSON",
-      JSON.stringify({
-        centos:
-          "quay.io/centos/centos:stream10@sha256:b7f85bb8be4c471bc62842156a51bbf224b15243943733bd54e86ba5fd79b1fc",
-        rocky: "rockylinux/rockylinux:10",
-        alma: "almalinux:10",
-        oracle: "oraclelinux:10",
-        debian:
-          "debian:12-slim@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241",
-        ubuntu: "ubuntu:24.04",
-      }),
+      JSON.stringify(DEFAULT_BASE_IMAGES),
     ),
   );
+  assertFloatingBaseImageReferences(baseImages);
   const dockerHubQuota = await checkDockerHubPreflight(
     Object.values(baseImages),
     log,
@@ -302,57 +299,18 @@ try {
       "Docker Hub quota",
       `${dockerHubQuota.remaining}/${dockerHubQuota.limit} remaining`,
     );
-  const resolveBase = async (name, reference) => {
-    if (/@sha256:[0-9a-f]{64}$/.test(reference)) return reference;
-    return retryUpstream(`Base image ${name} (${reference})`, async () => {
-      try {
-        const inspectArgs = ["inspect"];
-        const authFile = dockerAuthFile();
-        if (isDockerHubReference(reference) && authFile)
-          inspectArgs.push("--authfile", authFile);
-        inspectArgs.push("--format", "{{.Digest}}", `docker://${reference}`);
-        const digest = (
-          await run("skopeo", inspectArgs, {
-            capture: true,
-            timeout: 30000,
-          })
-        ).stdout.trim();
-        if (/^sha256:[0-9a-f]{64}$/.test(digest))
-          return `${reference}@${digest}`;
-      } catch {}
-      const manifest = JSON.parse(
-        (
-          await run(
-            "docker",
-            [
-              "buildx",
-              "imagetools",
-              "inspect",
-              "--format",
-              "{{json .Manifest}}",
-              reference,
-            ],
-            { capture: true, timeout: 30000 },
-          )
-        ).stdout,
-      );
-      if (/^sha256:[0-9a-f]{64}$/.test(manifest.digest))
-        return `${reference}@${manifest.digest}`;
-      throw new Error(`registry returned no immutable digest for ${reference}`);
-    }).catch((error) => {
-      throw new Error(
-        `could not resolve immutable base-image digest: ${reference}`,
-        { cause: error },
-      );
-    });
-  };
-  for (const [name, reference] of Object.entries(baseImages))
-    baseImages[name] = await resolveBase(name, reference);
+  const baseImageDigests = await resolveBaseImageDigests(baseImages, {
+    run,
+    retryUpstream,
+    dockerAuthFile,
+    isDockerHubReference,
+  });
   const inputs = {
     stableTag,
     sourceCommit,
     rollingCommit,
     baseImages,
+    baseImageDigests,
     checked: new Date().toISOString(),
   };
   log(
@@ -379,7 +337,8 @@ try {
       `no conductor lanes selected: ${selectedLaneIds.join(",")}`,
     );
   log("lane selection", selectedLaneIds.join(","));
-  const baseDigest = (lane) => baseImages[lane.baseKey];
+  const baseImageReference = (lane) => baseImages[lane.baseKey];
+  const baseDigest = (lane) => baseImageDigests[lane.baseKey];
   const packageInputsMatch = (checkpoint, lane) =>
     !force && packageCheckpointInputsMatch(checkpoint, lane);
   const imageInputsMatch = ({
@@ -395,6 +354,7 @@ try {
       lane,
       distribution,
       baseImage: baseImages[baseKey],
+      baseImageDigest: baseImageDigests[baseKey],
       packageCandidate:
         packageCandidate ||
         checkpoint?.package_candidate ||
@@ -634,6 +594,7 @@ try {
           package_metadata_sha256: imageResult.rpm_metadata_sha256 || null,
           source: { ref: lane.sourceRef, commit: lane.sourceCommit },
           packaging_commit: imageResult.packaging_commit || null,
+          base_image: imageResult.base_image || null,
           base_image_digest: imageResult.base_image_digest || null,
           workflow: imageResult.workflow || null,
           workflow_run_id: imageResult.run_id || null,
@@ -698,6 +659,9 @@ try {
       source: { ref: lane.sourceRef, commit: lane.sourceCommit },
       package_candidate: packageCandidate,
       base_image: error?.base_key ? baseImages[error.base_key] : null,
+      base_image_digest: error?.base_key
+        ? baseImageDigests[error.base_key]
+        : null,
       error: error?.message || String(error),
       failed_at: new Date().toISOString(),
       log: error?.image_build_log || null,
@@ -743,7 +707,6 @@ try {
     if (packageCheckpoint) {
       checkpoint = attachPublishedPackageCheckpoint(checkpoint, packageCheckpoint);
       delete checkpoint.package_candidate;
-      await saveStageCheckpoint(lane, checkpoint);
       result = packageCheckpoint.build || {};
       smoke = packageCheckpoint.validation;
       smoke2 = packageCheckpoint.smoke2 || [];
@@ -817,7 +780,8 @@ try {
             package_candidate: {
               status: "smoke2-pending",
               source_commit: lane.sourceCommit,
-              base_image: baseDigest(lane),
+              base_image: baseImageReference(lane),
+              base_image_digest: baseDigest(lane),
               candidate_dir: candidate,
               validation: mergePackageValidation(smoke, [record]),
               smoke2: records,
@@ -859,7 +823,8 @@ try {
             package_candidate: {
               status: "smoke2-passed",
               source_commit: lane.sourceCommit,
-              base_image: baseDigest(lane),
+              base_image: baseImageReference(lane),
+              base_image_digest: baseDigest(lane),
               candidate_dir: candidate,
               validation: smoke,
               smoke2,
@@ -873,7 +838,8 @@ try {
         packageRecord = {
           status: skipPublication ? "candidate" : "published",
           source_commit: lane.sourceCommit,
-          base_image: baseDigest(lane),
+          base_image: baseImageReference(lane),
+          base_image_digest: baseDigest(lane),
           version: lane.version,
           package_version: lane.packageVersion,
           candidate_id: `${lane.id}-${lane.version}`,
@@ -895,8 +861,10 @@ try {
     }
     let images = [];
     const imageFailures = [];
+    let imagesChanged = false;
     const recordImage = createLaneImageRecorder({
       baseImages,
+      baseImageDigests,
       enqueuePublication,
       lane,
       pathRoot: env("PUBLISH_ROOT", "/mnt/pvc/gluster-repository-http"),
@@ -1044,6 +1012,7 @@ try {
           repositoryName,
         });
       }
+      imagesChanged = !dryRun && imageJobs.length > 0;
       const imageResults = dryRun
         ? []
         : await Promise.allSettled(
@@ -1065,7 +1034,7 @@ try {
                       image_tag: image,
                       image_aliases:
                         lane.channel === "stable" ? lane.version : "",
-                      base_image_digest: baseImages[baseKey].split("@").at(-1),
+                      base_image_digest: baseImageDigests[baseKey],
                       base_image: baseImages[baseKey],
                       source_ref: lane.sourceRef,
                       source_commit: lane.sourceCommit,
@@ -1086,7 +1055,7 @@ try {
                       package_candidate: publishedCandidate,
                       package_provenance: packageProvenanceUrl,
                       image_tag: image,
-                      base_image_digest: baseImages[baseKey].split("@").at(-1),
+                      base_image_digest: baseImageDigests[baseKey],
                       base_image: baseImages[baseKey],
                       source_ref: lane.sourceRef,
                       source_commit: lane.sourceCommit,
@@ -1174,9 +1143,7 @@ try {
                         DISTRIBUTION: distribution,
                         VERSION: lane.version,
                         BASE_IMAGE: baseImages[baseKey],
-                        BASE_IMAGE_DIGEST: baseImages[baseKey]
-                          .split("@")
-                          .at(-1),
+                        BASE_IMAGE_DIGEST: baseImageDigests[baseKey],
                         PACKAGING_COMMIT: fields.packaging_commit,
                         SOURCE_REF: lane.sourceRef,
                         SOURCE_COMMIT: lane.sourceCommit,
@@ -1249,7 +1216,8 @@ try {
                   status: "published",
                   source_commit: lane.sourceCommit,
                   package_candidate: publishedCandidate,
-                  base_image: baseImages[baseKey],
+                  base_image: imageResult.base_image,
+                  base_image_digest: imageResult.base_image_digest,
                   distribution,
                   provenance: provenanceUrl,
                   result: imageResult,
@@ -1286,6 +1254,9 @@ try {
                 package_candidate: publishedCandidate,
                 base_image: error.base_key
                   ? baseImages[error.base_key]
+                  : null,
+                base_image_digest: error.base_key
+                  ? baseImageDigests[error.base_key]
                   : null,
                 distribution,
                 error: message,
@@ -1343,7 +1314,8 @@ try {
       id: lane.id,
       status: imageFailures.length ? "partial" : "published",
       source_commit: lane.sourceCommit,
-      base_image: baseDigest(lane),
+      base_image: baseImageReference(lane),
+      base_image_digest: baseDigest(lane),
       candidate,
       build: result,
       smoke,
@@ -1351,7 +1323,7 @@ try {
       package: checkpoint.package,
       image_results: images,
       image_failures: imageFailures,
-      changed: Boolean(candidate || images.length),
+      changed: Boolean(candidate || imagesChanged),
     };
   };
   const dispatch = async (workflow, artifact, fields) => {
@@ -1435,7 +1407,8 @@ try {
         failed_at: new Date().toISOString(),
         error,
         source_commit: lane.sourceCommit,
-        base_image: baseDigest(lane),
+        base_image: baseImageReference(lane),
+        base_image_digest: baseDigest(lane),
       };
     }
   }

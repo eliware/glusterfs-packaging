@@ -13,9 +13,7 @@ import {
 const logicalPath = (value) => String(value).replaceAll("\\", "/");
 
 test("refactored local image stages preserve the previous RPM order", async () => {
-  const directory = await mkdtemp(
-    path.join(os.tmpdir(), "gluster-image-behavior-"),
-  );
+  const directory = await mkdtemp(path.join(os.tmpdir(), "gluster-image-behavior-"));
   const calls = [];
   const config = {
     image: "ghcr.io/eliware/centos10-gluster:11.2",
@@ -43,10 +41,12 @@ test("refactored local image stages preserve the previous RPM order", async () =
     publishImage: true,
     log: () => {},
     loggedRun: async (command, args) => calls.push(["run", command, args]),
-    loggedInteractive: async (command, args) =>
-      calls.push(["interactive", command, args]),
-    run: async () => ({
-      stdout: "ghcr.io/eliware/centos10-gluster@sha256:digest\n",
+    loggedInteractive: async (command, args) => calls.push(["interactive", command, args]),
+    run: async (_command, args) => ({
+      stdout:
+        args.at(-1) === config.baseImage
+          ? JSON.stringify([`quay.io/centos/centos@${pulledBaseDigest}`])
+          : "ghcr.io/eliware/centos10-gluster@sha256:digest\n",
     }),
   };
   await writeFile(config.validationFile, '{"passed":true}\n');
@@ -58,9 +58,8 @@ test("refactored local image stages preserve the previous RPM order", async () =
     await publishLocalImage(config);
     await writeLocalImageResult(config);
 
-    expect(
-      calls.map(([kind, command, args]) => [kind, command, logicalPath(args[0])]),
-    ).toEqual([
+    expect(calls.map(([kind, command, args]) => [kind, command, logicalPath(args[0])])).toEqual([
+      ["run", "docker", "pull"],
       ["run", "docker", "build"],
       ["run", "node", "/repo/tests/container-smoke.mjs"],
       ["interactive", "node", "/repo/scripts/image-labels.mjs"],
@@ -68,7 +67,8 @@ test("refactored local image stages preserve the previous RPM order", async () =
       ["interactive", "node", "/repo/scripts/publish-image.mjs"],
       ["interactive", "node", "/repo/scripts/publish-image.mjs"],
     ]);
-    expect(calls[0][2]).toEqual([
+    expect(calls[0][2]).toEqual(["pull", config.baseImage]);
+    expect(calls[1][2]).toEqual([
       "build",
       "--file",
       config.dockerfile,
@@ -98,25 +98,19 @@ test("refactored local image stages preserve the previous RPM order", async () =
       "RPM_METADATA_SHA256=metadata",
       "/repo",
     ]);
-    expect(JSON.parse(await readFile(config.outputFile, "utf8"))).toMatchObject(
-      {
-        image: config.image,
-        digest: "sha256:digest",
-        container_validation: { passed: true },
-      },
-    );
-    await expect(
-      readFile(`${config.outputFile}.pending`, "utf8"),
-    ).rejects.toThrow();
+    expect(JSON.parse(await readFile(config.outputFile, "utf8"))).toMatchObject({
+      image: config.image,
+      digest: "sha256:digest",
+      container_validation: { passed: true },
+    });
+    await expect(readFile(`${config.outputFile}.pending`, "utf8")).rejects.toThrow();
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
 });
 
 test("refactored local image stages preserve the previous DEB order", async () => {
-  const directory = await mkdtemp(
-    path.join(os.tmpdir(), "gluster-image-deb-behavior-"),
-  );
+  const directory = await mkdtemp(path.join(os.tmpdir(), "gluster-image-deb-behavior-"));
   const calls = [];
   const config = {
     image: "ghcr.io/eliware/debian12-gluster:11.2",
@@ -143,10 +137,12 @@ test("refactored local image stages preserve the previous DEB order", async () =
     publishImage: true,
     log: () => {},
     loggedRun: async (command, args) => calls.push(["run", command, args]),
-    loggedInteractive: async (command, args) =>
-      calls.push(["interactive", command, args]),
-    run: async () => ({
-      stdout: "ghcr.io/eliware/debian12-gluster@sha256:deb-digest\n",
+    loggedInteractive: async (command, args) => calls.push(["interactive", command, args]),
+    run: async (_command, args) => ({
+      stdout:
+        args.at(-1) === config.baseImage
+          ? JSON.stringify([`docker.io/library/debian@${pulledBaseDigest}`])
+          : "ghcr.io/eliware/debian12-gluster@sha256:deb-digest\n",
     }),
   };
   await writeFile(config.validationFile, '{"passed":true}\n');
@@ -157,9 +153,8 @@ test("refactored local image stages preserve the previous DEB order", async () =
     await publishLocalImage(config);
     await writeLocalImageResult(config);
 
-    expect(
-      calls.map(([kind, command, args]) => [kind, command, logicalPath(args[0])]),
-    ).toEqual([
+    expect(calls.map(([kind, command, args]) => [kind, command, logicalPath(args[0])])).toEqual([
+      ["run", "docker", "pull"],
       ["run", "docker", "build"],
       ["run", "node", "/repo/tests/container-smoke-deb.mjs"],
       ["interactive", "node", "/repo/scripts/image-labels.mjs"],
@@ -167,21 +162,19 @@ test("refactored local image stages preserve the previous DEB order", async () =
       ["interactive", "node", "/repo/scripts/publish-image.mjs"],
       ["interactive", "node", "/repo/scripts/publish-image.mjs"],
     ]);
-    expect(calls[0][2].slice(-5)).toEqual([
+    expect(calls[1][2].slice(-5)).toEqual([
       "--build-arg",
       "GLUSTER_VERSION=11.2",
       "--build-arg",
       "DEB_REPO_URL=https://example.test/debian",
       "/repo",
     ]);
-    expect(JSON.parse(await readFile(config.outputFile, "utf8"))).toMatchObject(
-      {
-        image: config.image,
-        digest: "sha256:deb-digest",
-        package_format: "deb",
-        container_validation: { passed: true },
-      },
-    );
+    expect(JSON.parse(await readFile(config.outputFile, "utf8"))).toMatchObject({
+      image: config.image,
+      digest: "sha256:deb-digest",
+      package_format: "deb",
+      container_validation: { passed: true },
+    });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -201,13 +194,10 @@ test("a smoke-test failure stops before label verification or publication", asyn
       calls.push(["run", command, args]);
       throw new Error("simulated smoke failure");
     },
-    loggedInteractive: async (command, args) =>
-      calls.push(["interactive", command, args]),
+    loggedInteractive: async (command, args) => calls.push(["interactive", command, args]),
   };
 
-  await expect(smokeTestLocalImage(config)).rejects.toThrow(
-    "simulated smoke failure",
-  );
+  await expect(smokeTestLocalImage(config)).rejects.toThrow("simulated smoke failure");
   expect(calls).toHaveLength(1);
   expect(calls[0][1]).toBe("node");
   expect(logicalPath(calls[0][2][0])).toBe("/repo/tests/container-smoke-deb.mjs");
@@ -246,9 +236,7 @@ test.each([
 );
 
 test("reconciles a pending publication when the pushed digest is available", async () => {
-  const directory = await mkdtemp(
-    path.join(os.tmpdir(), "gluster-image-reconcile-"),
-  );
+  const directory = await mkdtemp(path.join(os.tmpdir(), "gluster-image-reconcile-"));
   const outputFile = path.join(directory, "image-result.json");
   const pendingFile = `${outputFile}.pending`;
   const validationFile = path.join(directory, "container-validation.json");
@@ -277,12 +265,9 @@ test("reconciles a pending publication when the pushed digest is available", asy
   );
 
   try {
-    const result = await reconcilePendingImagePublication(
-      pendingFile,
-      async () => ({
-        stdout: "ghcr.io/eliware/ubuntu24-gluster@sha256:published-digest\n",
-      }),
-    );
+    const result = await reconcilePendingImagePublication(pendingFile, async () => ({
+      stdout: "ghcr.io/eliware/ubuntu24-gluster@sha256:published-digest\n",
+    }));
     expect(result).toMatchObject({
       image: "ghcr.io/eliware/ubuntu24-gluster:11.2",
       digest: "sha256:published-digest",

@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=quay.io/centos/centos:stream10@sha256:b7f85bb8be4c471bc62842156a51bbf224b15243943733bd54e86ba5fd79b1fc
+ARG BASE_IMAGE=quay.io/centos/centos:stream10
 FROM ghcr.io/actions/actions-runner:latest AS github-runner
 FROM ${BASE_IMAGE}
 

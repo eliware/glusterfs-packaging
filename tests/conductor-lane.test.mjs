@@ -5,7 +5,8 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 const createRecorder = (overrides = {}) =>
   createLaneImageRecorder({
-    baseImages: { centos: "quay.io/example/centos@sha256:base" },
+    baseImages: { centos: "quay.io/example/centos:latest" },
+    baseImageDigests: { centos: "sha256:base" },
     enqueuePublication: async (_label, operation) => operation(),
     lane: {
       id: "epel10-stable",
@@ -27,13 +28,7 @@ test("lane image recorder rejects results without an immutable image digest", as
   const recordImage = createRecorder();
 
   await expect(
-    recordImage(
-      { image: "ghcr.io/eliware/example:11.2" },
-      "centos",
-      "",
-      "centos",
-      "",
-    ),
+    recordImage({ image: "ghcr.io/eliware/example:11.2" }, "centos", "", "centos", ""),
   ).rejects.toThrow("no immutable digest for centos");
 });
 
@@ -78,10 +73,8 @@ test("lane image recorder publishes through the serialized callback", async () =
 
   expect(calls[0]).toBe("epel10-stable/centos");
   expect(calls.filter(Array.isArray)).toHaveLength(3);
-  expect(
-    JSON.parse(
-      await readFile(path.join(pathRoot, "metadata/catalog.json"), "utf8"),
-    ),
-  ).toEqual({});
+  expect(JSON.parse(await readFile(path.join(pathRoot, "metadata/catalog.json"), "utf8"))).toEqual(
+    {},
+  );
   await rm(pathRoot, { recursive: true, force: true });
 });

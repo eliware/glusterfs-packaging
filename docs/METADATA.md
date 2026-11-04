@@ -56,20 +56,22 @@ image and must use the image's own immutable inputs. The canonical shape is:
   "status": "published",
   "source_commit": "<GlusterFS commit>",
   "package_candidate": "<package candidate id>",
-  "base_image": "<image reference>@sha256:<base digest>",
+  "base_image": "<moving image tag>",
+  "base_image_digest": "sha256:<tag digest resolved for this run>",
   "distribution": "<distribution id>",
   "provenance": "/metadata/runs/<run>/<lane>/<distribution>/provenance.json",
   "result": {
     "image": "ghcr.io/eliware/<repository>:<tag>",
     "digest": "sha256:<published digest>",
-    "base_image": "<same immutable image reference>",
-    "base_image_digest": "sha256:<same base digest>"
+    "base_image": "<same moving image tag>",
+    "base_image_digest": "sha256:<same resolved tag digest>"
   }
 }
 ```
 
-The checkpoint-level `base_image` is the resolved immutable base image for that
-specific distribution; it must never contain the package lane's base image.
-Checkpoint validation compares these per-image inputs, the package candidate,
-source commit, published digest, and provenance document before reusing an
-image.
+The checkpoint-level `base_image` is the moving tag used by that specific
+distribution and must never contain a digest pin or the package lane's base
+image. The resolved tag digest is stored separately and used to detect tag
+updates. Checkpoint validation compares these per-image inputs, the package
+candidate, source commit, published digest, and provenance document before
+reusing an image.

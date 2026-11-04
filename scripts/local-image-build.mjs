@@ -49,9 +49,12 @@ export function imageBuildArgs(config) {
 export async function buildLocalImage(config) {
   await mkdir(path.dirname(config.buildLog), { recursive: true });
   await writeFile(config.buildLog, "");
-  config.log(`[local-image] building ${config.image} from ${config.baseImage}`);
-  await config.loggedRun(config.runtime, [
-    ...imageBuildArgs(config),
-    config.repoRoot,
-  ]);
+  if (config.baseImage.includes("@"))
+    throw new Error(`base image must use a moving tag without a digest pin: ${config.baseImage}`);
+  config.log(`[local-image] pulling current base image ${config.baseImage}`);
+  await config.loggedRun(config.runtime, ["pull", config.baseImage]);
+  config.log(
+    `[local-image] building ${config.image} from ${config.baseImage}@${config.baseImageDigest}`,
+  );
+  await config.loggedRun(config.runtime, [...imageBuildArgs(config), config.repoRoot]);
 }

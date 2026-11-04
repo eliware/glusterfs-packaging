@@ -1,4 +1,4 @@
-FROM quay.io/centos/centos:stream10@sha256:b7f85bb8be4c471bc62842156a51bbf224b15243943733bd54e86ba5fd79b1fc
+FROM quay.io/centos/centos:stream10
 
 RUN dnf -y install dnf-plugins-core epel-release \
     && dnf config-manager --set-enabled crb \

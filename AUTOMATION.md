@@ -15,10 +15,13 @@ failure sends the configured Discord notification. The conductor owns the
 global run lock and is the only process that updates checkpoints, validation
 metadata, catalogs, provenance, and release manifests.
 
-The conductor verifies upstream GlusterFS revisions, supported base-image
-digests, GitHub access, quotas, signing configuration, Docker, and repository
-storage before dispatching work. If a required input cannot be verified, it
-stops without scheduling a build or changing release metadata.
+The conductor verifies upstream GlusterFS revisions, supported moving base
+image tags and their current digests, GitHub access, quotas, signing
+configuration, Docker, and repository storage before dispatching work. Base OS
+image references never contain SHA pins. A changed tag digest invalidates only
+that OS image's checkpoint; unchanged package and image checkpoints are reused.
+If a required input cannot be verified, the conductor stops without scheduling
+a build or changing release metadata.
 
 ## Package lanes
 

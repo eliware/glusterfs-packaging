@@ -150,7 +150,8 @@ Before scheduling work, the conductor verifies:
 - supported CentOS Stream, Rocky, Alma, Oracle, Debian, and Ubuntu base-image
   references;
 - GitHub API access and Actions dispatch availability;
-- Docker Hub quota when an unpinned base reference must be resolved;
+- current registry digest for every supported moving base-image tag;
+- Docker Hub quota for authenticated tag inspection and pulls;
 - local prerequisites are checked by the individual build, signing, and
   publication stages as they are needed.
 
@@ -161,9 +162,10 @@ same credential for image pulls. The Debian and Ubuntu builder-image
 workflows log in before their Docker Hub base-image pulls using the GitHub
 secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`. The token needs read-only
 access. A missing credential is a preflight failure rather than an anonymous
-pull. Digest-pinned references avoid the quota-check request, but their image
-layers are still pulled with the same authenticated Docker credentials during
-an actual build.
+pull. Base OS references are always moving tags without SHA pins. The conductor
+resolves each tag's current digest on every run and records that digest
+separately for checkpoint checks and provenance. Image builds pull and use the
+tag itself.
 
 Transient network, DNS, TLS, API, and rate-limit failures are retried with
 bounded backoff. If any required source cannot be verified, the conductor
@@ -185,9 +187,15 @@ repository metadata, and signatures.
 
 An image build is evaluated separately. A valid package checkpoint never marks
 an image complete. An image is skipped only when its own checkpoint matches the
-source commit, base-image digest, package provenance, image tag, container
+source commit, moving base-image tag and its currently resolved digest, package provenance, image tag, container
 validation, immutable digest, and a provenance document that passes
 `verify-provenance.mjs`; merely finding a provenance file is insufficient.
+
+If source commits and all base-tag digests are unchanged, the run is a no-op.
+When only one OS tag digest changes, only that OS image target is rebuilt for
+the affected lane; other image checkpoints and package checkpoints are reused.
+A rolling source update rebuilds that rolling lane's package and images on the
+current OS tags, while an unchanged stable lane remains checkpointed.
 
 This separation lets a rerun skip valid package work and continue with missing
 Smoke-2, publication, provenance, or image work.
@@ -255,8 +263,9 @@ build/publish operation. Image targets are scheduled independently, but this
 lock intentionally serializes the Docker-heavy operation on the development
 VM; provenance and catalog reconciliation happen in the coordinator outside
 that lock. The existing
-Dockerfiles under `containers/` are used. Each build receives an immutable
-base-image reference, the URL of the already-published signed package
+Dockerfiles under `containers/` are used. Each build receives a moving
+base-image tag plus the separately recorded digest resolved during preflight,
+the URL of the already-published signed package
 repository, package provenance, source commit, packaging commit, and
 repository metadata digest. The Dockerfiles fetch the repository key and
 metadata over HTTPS and install through the normal signed DNF or APT

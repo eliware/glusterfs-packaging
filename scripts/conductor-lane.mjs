@@ -8,6 +8,7 @@ import { readFile, rename, rm, writeFile } from "node:fs/promises";
  */
 export function createLaneImageRecorder({
   baseImages,
+  baseImageDigests,
   enqueuePublication,
   lane,
   pathRoot,
@@ -25,27 +26,17 @@ export function createLaneImageRecorder({
     packageProvenanceUrl,
   ) {
     if (!imageResult?.image || !imageResult?.digest)
-      throw new Error(
-        `image workflow returned no immutable digest for ${distribution}`,
-      );
+      throw new Error(`image workflow returned no immutable digest for ${distribution}`);
     const active = JSON.parse(
-      await readFile(
-        path.join(pathRoot, "metadata/active-generation.json"),
-        "utf8",
-      ),
+      await readFile(path.join(pathRoot, "metadata/active-generation.json"), "utf8"),
     );
     const output = path.join(
       pathRoot,
       "metadata",
       `catalog.json.${runId}-${lane.id}-${distribution}.next`,
     );
-    const containerValidationDir = await tempDir(
-      "gluster-container-validation-",
-    );
-    const containerValidationFile = path.join(
-      containerValidationDir,
-      "container-validation.json",
-    );
+    const containerValidationDir = await tempDir("gluster-container-validation-");
+    const containerValidationFile = path.join(containerValidationDir, "container-validation.json");
     await writeFile(
       containerValidationFile,
       `${JSON.stringify(imageResult.container_validation, null, 2)}\n`,
@@ -90,24 +81,15 @@ export function createLaneImageRecorder({
           "--package-provenance",
           packageProvenanceUrl,
           "--base-image-digest",
-          imageResult.base_image_digest ||
-            baseImages[imageBaseKey].split("@").at(-1),
+          imageResult.base_image_digest || baseImageDigests[imageBaseKey],
           "--base-image",
           imageResult.base_image || baseImages[imageBaseKey],
         ];
-        await runInteractive(
-          "node",
-          catalogArgs,
-          { env: process.env, silent: true },
-        );
+        await runInteractive("node", catalogArgs, { env: process.env, silent: true });
         await rename(output, path.join(pathRoot, "metadata/catalog.json"));
         await runInteractive(
           "node",
-          [
-            path.join(repoRoot, "scripts/generate-repository-index.mjs"),
-            "--root",
-            pathRoot,
-          ],
+          [path.join(repoRoot, "scripts/generate-repository-index.mjs"), "--root", pathRoot],
           { silent: true },
         );
         await runInteractive(

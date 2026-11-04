@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import path from "node:path";
-import { mkdir, readdir } from "node:fs/promises";
+import { mkdir, readFile, readdir } from "node:fs/promises";
 import { readMetadata, writeMetadata } from "./metadata-io.mjs";
+import { parseJson } from "./serialization.mjs";
 
 const args = new Map();
 for (let index = 2; index < process.argv.length; index += 1) {
@@ -47,7 +48,9 @@ const failureTargets = async (directory) => {
       const file = path.join(current, entry.name);
       if (entry.isDirectory()) await walk(file);
       else if (entry.name === "failure-record.json") {
-        const record = await readMetadata(file, { allowMissing: true });
+        // Failure records predate metadata_version and use their own schema.
+        // Parse them as JSON instead of passing them through metadata migrations.
+        const record = parseJson(await readFile(file, "utf8"), file);
         if (record?.lane && record?.distribution && record?.package_candidate)
           failures.set(
             `${record.package_candidate}:${record.distribution}`,

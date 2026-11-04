@@ -881,6 +881,7 @@ try {
           "assets",
           "publication.log",
         );
+        await mkdir(path.dirname(publicationLog), { recursive: true });
         try {
           await runInteractive(
             "node",

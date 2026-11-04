@@ -159,7 +159,7 @@ export async function generateReleaseReport({
   const directory = path.join(outputRoot, "metadata", "runs", runId);
   await mkdir(directory, { recursive: true });
   const logo = await readFile(
-    "/opt/gluster-packaging/assets/eliware-brand.svg",
+    new URL("../assets/eliware-brand.svg", import.meta.url),
   );
   const logoData = `data:image/svg+xml;base64,${logo.toString("base64")}`;
   const successful = results.filter(

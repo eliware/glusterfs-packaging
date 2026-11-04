@@ -296,6 +296,7 @@ try {
 
   if (packageOnly) {
     const repoFile = path.join(publishRoot, "glusterfs-el10.repo");
+    const packageSuite = env("PACKAGE_SUITE", "");
     await cp(
       path.join(repoRoot, "templates/glusterfs-el10.repo"),
       `${repoFile}.next`,
@@ -321,8 +322,7 @@ try {
       candidate,
       "--distribution",
       env("PACKAGE_DISTRIBUTION", "unknown"),
-      "--suite",
-      env("PACKAGE_SUITE", ""),
+      ...(packageSuite ? ["--suite", packageSuite] : []),
       "--built",
       new Date().toISOString(),
       "--source-ref",

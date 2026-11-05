@@ -104,10 +104,14 @@ export function imageTargetsForLane(lane) {
 }
 
 export function hasRequiredImageFailure(lane, failures = []) {
+  const configuredRpmTargets =
+    lane.imageTargets || (lane.format === "rpm" ? EPEL_IMAGE_TARGETS : null);
   const required = new Set(
-    (lane.imageTargets || EPEL_IMAGE_TARGETS)
-      .filter((target) => target.required)
-      .map((target) => target.distribution),
+    configuredRpmTargets
+      ? configuredRpmTargets
+          .filter((target) => target.required)
+          .map((target) => target.distribution)
+      : imageTargetsForLane(lane).map(([distribution]) => distribution),
   );
   return failures.some((failure) => required.has(failure.distribution));
 }

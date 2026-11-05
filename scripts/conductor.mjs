@@ -949,8 +949,7 @@ try {
         packageRecord,
       );
       const rpmRepoUrl = `${repositoryBase}${packageRepository}`;
-      const debRepository = (distribution, suite) =>
-        `${repositoryBase}/${distribution}/${suite}/amd64/${lane.channel === "preview" ? `previews/${lane.id}-${lane.version}` : "stable"}/`;
+      const debRepository = `${repositoryBase}${packageRepository}`;
       let publishedRpmMetadataSha256;
       if (!skipPublication) {
         const publishedMetadata = packageCheckpoint?.published_root
@@ -1052,7 +1051,7 @@ try {
                       channel:
                         lane.channel === "preview" ? "preview" : "stable",
                       version: lane.version,
-                      deb_repo_url: debRepository(distribution, lane.suite),
+                      deb_repo_url: debRepository,
                       package_candidate: publishedCandidate,
                       package_provenance: packageProvenanceUrl,
                       image_tag: image,
